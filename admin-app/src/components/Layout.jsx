@@ -5,6 +5,8 @@ import {
   Tabs,
   Tab,
   Container,
+  AppBar,
+  Toolbar,
   Typography
 } from '@mui/material';
 import { 
@@ -49,36 +51,59 @@ function Layout({ children }) {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-        <Tabs 
-          value={getCurrentTabValue()} 
-          onChange={handleNavigation}
-          aria-label="WP Schedule Manager navigation"
-          variant="scrollable"
-          scrollButtons="auto"
-          sx={{ 
-            '& .MuiTab-root': { 
-              textTransform: 'none',
-              fontSize: '14px',
-              minHeight: '48px',
-            }
-          }}
-        >
-          {menuItems.map((item) => (
-            <Tab 
-              key={item.text} 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Box sx={{ mr: 1 }}>{item.icon}</Box>
-                  {item.text}
-                </Box>
-              } 
-              value={item.path} 
-            />
-          ))}
-        </Tabs>
-      </Box>
-      <Container maxWidth="xl">
+      <AppBar 
+        position="static" 
+        color="default" 
+        elevation={0}
+        sx={{ 
+          backgroundColor: 'white',
+          borderBottom: '1px solid #e0e0e0'
+        }}
+      >
+        <Toolbar disableGutters sx={{ px: 2 }}>
+          <Tabs 
+            value={getCurrentTabValue()} 
+            onChange={handleNavigation}
+            aria-label="WP Schedule Manager navigation"
+            variant="standard"
+            sx={{ 
+              width: '100%',
+              '& .MuiTab-root': { 
+                textTransform: 'none',
+                fontSize: '14px',
+                minHeight: '48px',
+                padding: '6px 16px',
+                minWidth: 0,
+                flex: 'none',
+                marginRight: '8px'
+              },
+              '& .MuiTabs-indicator': {
+                height: '3px'
+              }
+            }}
+          >
+            {menuItems.map((item) => (
+              <Tab 
+                key={item.text} 
+                label={
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center',
+                    flexDirection: 'row'
+                  }}>
+                    <Box sx={{ mr: 1 }}>{item.icon}</Box>
+                    <Typography variant="body2" component="span">
+                      {item.text}
+                    </Typography>
+                  </Box>
+                } 
+                value={item.path} 
+              />
+            ))}
+          </Tabs>
+        </Toolbar>
+      </AppBar>
+      <Container maxWidth="xl" sx={{ mt: 3 }}>
         {children}
       </Container>
     </Box>

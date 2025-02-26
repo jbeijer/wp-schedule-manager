@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
@@ -50,6 +50,29 @@ const theme = createTheme({
         },
       },
     },
+    // Add specific overrides for tabs to ensure they work well in WordPress admin
+    MuiTabs: {
+      styleOverrides: {
+        root: {
+          minHeight: '48px',
+          width: '100%',
+        },
+        flexContainer: {
+          width: '100%',
+        },
+        scroller: {
+          width: '100%',
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          minWidth: 'auto',
+          padding: '6px 16px',
+        },
+      },
+    },
   },
 });
 
@@ -85,13 +108,15 @@ function App({ initialPage = 'dashboard' }) {
       <CssBaseline />
       <Layout>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/organizations" element={<Organizations />} />
           <Route path="/users" element={<Users />} />
           <Route path="/resources" element={<Resources />} />
           <Route path="/shifts" element={<Shifts />} />
           <Route path="/settings" element={<Settings />} />
+          {/* Add a catch-all route that redirects to dashboard */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Layout>
     </ThemeProvider>

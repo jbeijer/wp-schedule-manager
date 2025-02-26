@@ -10,7 +10,7 @@ class WP_Schedule_Manager_Organization {
      * Get all organizations.
      *
      * @since    1.0.0
-     * @return   array    Array of organizations.
+     * @return   array    Array of organization objects.
      */
     public function get_all() {
         global $wpdb;
@@ -19,8 +19,10 @@ class WP_Schedule_Manager_Organization {
         
         // Check if the table exists
         if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
-            // Table doesn't exist, return empty array
-            return array();
+            // Table doesn't exist, create it
+            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-db.php';
+            WP_Schedule_Manager_DB::create_tables();
+            return array(); // Return empty array since table was just created
         }
         
         $results = $wpdb->get_results("SELECT * FROM $table_name ORDER BY name ASC");

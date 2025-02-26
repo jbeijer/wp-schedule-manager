@@ -239,6 +239,65 @@ class WP_Schedule_Manager_Admin {
     }
 
     /**
+     * Register the organization custom post type.
+     *
+     * @since    1.0.0
+     */
+    public function register_organization_post_type() {
+        $labels = array(
+            'name'                  => _x('Organizations', 'Post type general name', 'wp-schedule-manager'),
+            'singular_name'         => _x('Organization', 'Post type singular name', 'wp-schedule-manager'),
+            'menu_name'             => _x('Organizations', 'Admin Menu text', 'wp-schedule-manager'),
+            'name_admin_bar'        => _x('Organization', 'Add New on Toolbar', 'wp-schedule-manager'),
+            'add_new'               => __('Add New', 'wp-schedule-manager'),
+            'add_new_item'          => __('Add New Organization', 'wp-schedule-manager'),
+            'new_item'              => __('New Organization', 'wp-schedule-manager'),
+            'edit_item'             => __('Edit Organization', 'wp-schedule-manager'),
+            'view_item'             => __('View Organization', 'wp-schedule-manager'),
+            'all_items'             => __('All Organizations', 'wp-schedule-manager'),
+            'search_items'          => __('Search Organizations', 'wp-schedule-manager'),
+            'parent_item_colon'     => __('Parent Organizations:', 'wp-schedule-manager'),
+            'not_found'             => __('No organizations found.', 'wp-schedule-manager'),
+            'not_found_in_trash'    => __('No organizations found in Trash.', 'wp-schedule-manager'),
+            'featured_image'        => _x('Organization Image', 'Overrides the "Featured Image" phrase', 'wp-schedule-manager'),
+            'set_featured_image'    => _x('Set organization image', 'Overrides the "Set featured image" phrase', 'wp-schedule-manager'),
+            'remove_featured_image' => _x('Remove organization image', 'Overrides the "Remove featured image" phrase', 'wp-schedule-manager'),
+            'use_featured_image'    => _x('Use as organization image', 'Overrides the "Use as featured image" phrase', 'wp-schedule-manager'),
+            'archives'              => _x('Organization archives', 'The post type archive label used in nav menus', 'wp-schedule-manager'),
+            'insert_into_item'      => _x('Insert into organization', 'Overrides the "Insert into post" phrase', 'wp-schedule-manager'),
+            'uploaded_to_this_item' => _x('Uploaded to this organization', 'Overrides the "Uploaded to this post" phrase', 'wp-schedule-manager'),
+            'filter_items_list'     => _x('Filter organizations list', 'Screen reader text for the filter links heading on the post type listing screen', 'wp-schedule-manager'),
+            'items_list_navigation' => _x('Organizations list navigation', 'Screen reader text for the pagination heading on the post type listing screen', 'wp-schedule-manager'),
+            'items_list'            => _x('Organizations list', 'Screen reader text for the items list heading on the post type listing screen', 'wp-schedule-manager'),
+        );
+        
+        $args = array(
+            'labels'             => $labels,
+            'public'             => true,
+            'publicly_queryable' => true,
+            'show_ui'            => true,
+            'show_in_menu'       => false, // Hide from main menu, we'll add it to our custom menu
+            'query_var'          => true,
+            'rewrite'            => array('slug' => 'organization'),
+            'capability_type'    => 'post',
+            'has_archive'        => true,
+            'hierarchical'       => true, // Allow parent-child relationships
+            'menu_position'      => null,
+            'supports'           => array('title', 'editor', 'thumbnail', 'custom-fields'),
+            'show_in_rest'       => true, // Enable Gutenberg editor and REST API
+        );
+        
+        register_post_type('schedule_organization', $args);
+        
+        // Register custom meta fields for organizations
+        register_post_meta('schedule_organization', 'parent_id', array(
+            'show_in_rest' => true,
+            'single' => true,
+            'type' => 'integer',
+        ));
+    }
+
+    /**
      * Display the admin dashboard page.
      *
      * @since    1.0.0

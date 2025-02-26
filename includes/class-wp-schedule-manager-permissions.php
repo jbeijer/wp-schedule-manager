@@ -278,15 +278,6 @@ class WP_Schedule_Manager_Permissions {
             return true;
         }
         
-        // Get current user ID
-        $user_id = get_current_user_id();
-        
-        // Check if user is a member of any organization
-        $user_orgs = $this->user_organization->get_user_organizations($user_id);
-        if (!empty($user_orgs)) {
-            return true;
-        }
-        
         // For development purposes, allow all logged-in users to view organizations
         // Remove this in production
         if (is_user_logged_in()) {
@@ -320,6 +311,25 @@ class WP_Schedule_Manager_Permissions {
             return true;
         }
         
+        return false;
+    }
+
+    /**
+     * Check if a user can create an organization.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id    The user ID.
+     * @return   bool                  True if the user can create an organization, false otherwise.
+     */
+    public function user_can_create_organization($user_id) {
+        // WordPress administrators can create organizations
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        // Add additional permission checks here if needed
+        
+        // By default, only administrators can create organizations
         return false;
     }
 }

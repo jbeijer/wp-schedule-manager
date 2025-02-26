@@ -119,6 +119,9 @@ class WP_Schedule_Manager {
         
         // Register custom post type for resources
         $this->loader->add_action('init', $plugin_admin, 'register_resource_post_type');
+        
+        // Register custom post type for organizations
+        $this->loader->add_action('init', $plugin_admin, 'register_organization_post_type');
     }
 
     /**

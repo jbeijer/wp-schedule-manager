@@ -16,27 +16,63 @@
   padding: 10px;
   position: relative;
   z-index: 1; /* Ensure our app is below the WordPress admin bar */
+  max-width: 100%; /* Ensure the app doesn't exceed the width of the container */
+  overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 /* Adjust the app to work within WordPress admin area */
 #wpcontent, #wpbody, #wpbody-content {
-  overflow-x: visible !important;
+  overflow-x: hidden !important; /* Changed from visible to hidden to prevent horizontal scrolling */
+}
+
+/* Fix for AppBar and Toolbar */
+.MuiAppBar-root {
+  box-shadow: none !important;
+  z-index: 10 !important;
+}
+
+.MuiToolbar-root {
+  min-height: 48px !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
 }
 
 /* Fix for tabs navigation */
 .MuiTabs-root {
   min-height: 48px;
   background-color: #fff;
-  border-radius: 4px 4px 0 0;
+  width: 100% !important;
+}
+
+.MuiTabs-flexContainer {
+  display: flex !important;
 }
 
 .MuiTabs-scroller {
-  overflow-x: auto !important;
+  overflow-x: hidden !important;
 }
 
 .MuiTab-root {
-  min-width: auto !important;
+  min-width: 0 !important;
   padding: 6px 16px !important;
+}
+
+/* Ensure tab indicators are properly sized */
+.MuiTabs-indicator {
+  height: 3px !important;
+  background-color: #2271b1 !important; /* WordPress blue */
+}
+
+/* Responsive adjustments for small screens */
+@media (max-width: 782px) {
+  .MuiTab-root {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+  }
+  
+  .MuiTab-root .MuiSvgIcon-root {
+    font-size: 1.2rem !important;
+  }
 }
 
 /* Basic layout styles */
