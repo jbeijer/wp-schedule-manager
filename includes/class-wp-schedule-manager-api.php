@@ -18,6 +18,18 @@
  * @subpackage WP_Schedule_Manager/includes
  * @author     Your Name <email@example.com>
  */
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly
+}
+
+if ( ! class_exists( 'WP_REST_Server' ) ) {
+    require_once ABSPATH . 'wp-includes/rest-api/class-wp-rest-server.php';
+}
+
+if ( ! function_exists( 'register_rest_route' ) ) {
+    require_once ABSPATH . 'wp-includes/rest-api.php';
+}
+
 class WP_Schedule_Manager_API {
 
     /**
@@ -159,10 +171,12 @@ class WP_Schedule_Manager_API {
         try {
             // Use the Organization model to get all organizations
             require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
-            $organization_model = new WP_Schedule_Manager_Organization();
+            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-db.php';
+WP_Schedule_Manager_DB::create_tables();
+$organization_model = new WP_Schedule_Manager_Organization();
             
             // Get organizations
-            $organizations_data = $organization_model->get_all();
+            $organizations_data = $organization_model->all();
             $organizations = array();
             
             foreach ($organizations_data as $organization) {
@@ -226,7 +240,7 @@ class WP_Schedule_Manager_API {
         // Use the Organization model to get the organization
         require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
         $organization_model = new WP_Schedule_Manager_Organization();
-        $organization_data = $organization_model->get($id);
+        $organization_data = $organization_model->find($id);
         
         if (!$organization_data) {
             return new WP_Error(
@@ -281,7 +295,7 @@ class WP_Schedule_Manager_API {
         }
         
         // Get the created organization
-        $organization = $organization_model->get($organization_id);
+        $organization = $organization_model->find($organization_id);
         
         if (!$organization) {
             return new WP_Error('not_found', 'Organization not found after creation', array('status' => 500));
@@ -314,9 +328,15 @@ class WP_Schedule_Manager_API {
      */
     public function update_organization( $request ) {
         $id = (int) $request['id'];
-        $post = get_post($id);
         
-        if (!$post || $post->post_type !== 'schedule_organization') {
+        // Use the Organization model to find and update the organization
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
+        $organization_model = new WP_Schedule_Manager_Organization();
+        
+        // Check if the organization exists
+        $existing_organization = $organization_model->find($id);
+        
+        if (!$existing_organization) {
             return new WP_Error(
                 'rest_organization_invalid_id',
                 __('Invalid organization ID.', 'wp-schedule-manager'),
@@ -324,30 +344,24 @@ class WP_Schedule_Manager_API {
             );
         }
         
-        $organization = $this->prepare_item_for_database($request);
+        // Prepare the organization data for update
+        $organization_data = $this->prepare_item_for_database($request);
         
-        // Update post
-        $post_data = array(
-            'ID'           => $id,
-            'post_title'   => $organization['name'],
-            'post_content' => $organization['description'],
-        );
+        // Update the organization
+        $result = $organization_model->update($id, $organization_data);
         
-        $updated = wp_update_post($post_data, true);
-        
-        if (is_wp_error($updated)) {
-            return $updated;
+        if (!$result) {
+            return new WP_Error(
+                'rest_organization_update_failed',
+                __('Failed to update organization.', 'wp-schedule-manager'),
+                array('status' => 500)
+            );
         }
         
-        // Update parent organization if provided
-        if (isset($organization['parent_id'])) {
-            update_post_meta($id, 'parent_id', (int) $organization['parent_id']);
-        }
+        // Get the updated organization
+        $updated_organization = $organization_model->find($id);
         
-        $post = get_post($id);
-        $organization = $this->prepare_organization_for_response($post);
-        
-        return rest_ensure_response($organization);
+        return rest_ensure_response($updated_organization);
     }
 
     /**
@@ -371,9 +385,15 @@ class WP_Schedule_Manager_API {
      */
     public function delete_organization( $request ) {
         $id = (int) $request['id'];
-        $post = get_post($id);
         
-        if (!$post || $post->post_type !== 'schedule_organization') {
+        // Use the Organization model to find and delete the organization
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
+        $organization_model = new WP_Schedule_Manager_Organization();
+        
+        // Get the organization before deleting it
+        $organization = $organization_model->find($id);
+        
+        if (!$organization) {
             return new WP_Error(
                 'rest_organization_invalid_id',
                 __('Invalid organization ID.', 'wp-schedule-manager'),
@@ -381,8 +401,7 @@ class WP_Schedule_Manager_API {
             );
         }
         
-        $organization = $this->prepare_organization_for_response($post);
-        $result = wp_delete_post($id, true);
+        $result = $organization_model->delete($id);
         
         if (!$result) {
             return new WP_Error(

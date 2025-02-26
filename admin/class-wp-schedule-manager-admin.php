@@ -228,10 +228,10 @@ class WP_Schedule_Manager_Admin {
             'show_in_rest'       => true, // Enable Gutenberg editor
         );
         
-        register_post_type('schedule_resource', $args);
+        register_post_type('sch_resource', $args);
         
         // Register custom meta fields for resources
-        register_post_meta('schedule_resource', 'organization_id', array(
+        register_post_meta('sch_resource', 'organization_id', array(
             'show_in_rest' => true,
             'single' => true,
             'type' => 'integer',
@@ -287,10 +287,10 @@ class WP_Schedule_Manager_Admin {
             'show_in_rest'       => true, // Enable Gutenberg editor and REST API
         );
         
-        register_post_type('schedule_organization', $args);
+        register_post_type('sch_org', $args);
         
         // Register custom meta fields for organizations
-        register_post_meta('schedule_organization', 'parent_id', array(
+        register_post_meta('sch_org', 'parent_id', array(
             'show_in_rest' => true,
             'single' => true,
             'type' => 'integer',
