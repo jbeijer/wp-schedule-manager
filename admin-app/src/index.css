@@ -9,11 +9,34 @@
   box-sizing: border-box;
 }
 
-/* Make sure our app takes the full width of the container */
+/* Make sure our app takes the full width of the container and doesn't overlap with WP admin menu */
 #wp-schedule-manager-admin-app {
   width: 100%;
   margin: 0;
-  padding: 20px;
+  padding: 10px;
+  position: relative;
+  z-index: 1; /* Ensure our app is below the WordPress admin bar */
+}
+
+/* Adjust the app to work within WordPress admin area */
+#wpcontent, #wpbody, #wpbody-content {
+  overflow-x: visible !important;
+}
+
+/* Fix for tabs navigation */
+.MuiTabs-root {
+  min-height: 48px;
+  background-color: #fff;
+  border-radius: 4px 4px 0 0;
+}
+
+.MuiTabs-scroller {
+  overflow-x: auto !important;
+}
+
+.MuiTab-root {
+  min-width: auto !important;
+  padding: 6px 16px !important;
 }
 
 /* Basic layout styles */

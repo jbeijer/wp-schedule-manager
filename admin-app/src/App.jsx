@@ -14,7 +14,7 @@ import Settings from './pages/Settings';
 // Import components
 import Layout from './components/Layout';
 
-// Create a theme instance
+// Create a theme instance that matches WordPress admin
 const theme = createTheme({
   palette: {
     primary: {
@@ -41,6 +41,16 @@ const theme = createTheme({
       '"Segoe UI Symbol"',
     ].join(','),
   },
+  components: {
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 1px 1px rgba(0,0,0,0.04)',
+          border: '1px solid #c3c4c7',
+        },
+      },
+    },
+  },
 });
 
 function App({ initialPage = 'dashboard' }) {
@@ -51,6 +61,7 @@ function App({ initialPage = 'dashboard' }) {
   useEffect(() => {
     // Navigate to the initial page based on the data-page attribute
     if (initialPage) {
+      // Make sure we navigate to the correct path format for HashRouter
       navigate(`/${initialPage}`);
     }
 

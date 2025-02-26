@@ -56,7 +56,8 @@ class WP_Schedule_Manager_API {
      * @since    1.0.0
      */
     public function register_routes() {
-        add_action( 'rest_api_init', array( $this, 'register_api_endpoints' ) );
+        // Directly register API endpoints instead of adding another action
+        $this->register_api_endpoints();
     }
 
     /**

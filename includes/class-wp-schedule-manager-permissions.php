@@ -265,4 +265,61 @@ class WP_Schedule_Manager_Permissions {
         
         return $highest_role;
     }
+
+    /**
+     * Check if the current user can view organizations.
+     *
+     * @since    1.0.0
+     * @return   bool    True if the user can view organizations, false otherwise.
+     */
+    public function user_can_view_organizations() {
+        // WordPress administrators can always view organizations
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        // Get current user ID
+        $user_id = get_current_user_id();
+        
+        // Check if user is a member of any organization
+        $user_orgs = $this->user_organization->get_user_organizations($user_id);
+        if (!empty($user_orgs)) {
+            return true;
+        }
+        
+        // For development purposes, allow all logged-in users to view organizations
+        // Remove this in production
+        if (is_user_logged_in()) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if the current user can view organizations for a specific user.
+     *
+     * @since    1.0.0
+     * @param    int     $user_id    The user ID to check organizations for.
+     * @return   bool                True if the user can view organizations for the specified user, false otherwise.
+     */
+    public function user_can_view_organizations_for_user($user_id) {
+        // WordPress administrators can always view organizations for any user
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        // Users can view their own organizations
+        if (get_current_user_id() == $user_id) {
+            return true;
+        }
+        
+        // For development purposes, allow all logged-in users to view organizations
+        // Remove this in production
+        if (is_user_logged_in()) {
+            return true;
+        }
+        
+        return false;
+    }
 }
