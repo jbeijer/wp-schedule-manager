@@ -1,13 +1,15 @@
+// I admin-app/src/components/Layout.jsx
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   Box, 
   Tabs,
   Tab,
-  Container,
   AppBar,
   Toolbar,
-  Typography
+  Typography,
+  Container // Lägg till Container-importen här
 } from '@mui/material';
 import { 
   Dashboard as DashboardIcon,
@@ -32,22 +34,15 @@ function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Find the current tab value based on the hash part of the URL
-  const getCurrentTabValue = () => {
-    // Extract the path from the hash without the '#' character
-    // If hash is empty or just '#', default to '/dashboard'
-    const hashPath = location.hash.replace('#', '') || '/dashboard';
-    
-    // Find the matching menu item path
-    const matchingItem = menuItems.find(item => item.path === hashPath);
-    
-    // Return the matching path or default to dashboard
-    return matchingItem ? matchingItem.path : '/dashboard';
+  // Get the current path from the hash part of the URL
+  const getCurrentPath = () => {
+    const hashPath = location.hash.replace('#', '');
+    return hashPath || '/dashboard';
   };
 
-  const handleTabChange = (event, newValue) => {
+  const handleTabChange = (event, newPath) => {
     // Navigate to the selected path
-    navigate(newValue);
+    navigate(newPath);
   };
 
   return (
@@ -63,7 +58,7 @@ function Layout({ children }) {
       >
         <Toolbar disableGutters sx={{ px: 2 }}>
           <Tabs 
-            value={getCurrentTabValue()} 
+            value={getCurrentPath()} 
             onChange={handleTabChange}
             aria-label="WP Schedule Manager navigation"
             variant="standard"
