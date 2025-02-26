@@ -32,21 +32,22 @@ function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleNavigation = (event, newValue) => {
-    // Navigate to the selected path
-    navigate(newValue);
+  // Find the current tab value based on the hash part of the URL
+  const getCurrentTabValue = () => {
+    // Extract the path from the hash without the '#' character
+    // If hash is empty or just '#', default to '/dashboard'
+    const hashPath = location.hash.replace('#', '') || '/dashboard';
+    
+    // Find the matching menu item path
+    const matchingItem = menuItems.find(item => item.path === hashPath);
+    
+    // Return the matching path or default to dashboard
+    return matchingItem ? matchingItem.path : '/dashboard';
   };
 
-  // Find the current tab value based on the location pathname
-  const getCurrentTabValue = () => {
-    // Get the pathname without the hash
-    const currentPath = location.pathname;
-    
-    // Find the matching menu item
-    const item = menuItems.find(item => item.path === currentPath);
-    
-    // Return the path or default to dashboard
-    return item ? item.path : '/dashboard';
+  const handleTabChange = (event, newValue) => {
+    // Navigate to the selected path
+    navigate(newValue);
   };
 
   return (
@@ -63,7 +64,7 @@ function Layout({ children }) {
         <Toolbar disableGutters sx={{ px: 2 }}>
           <Tabs 
             value={getCurrentTabValue()} 
-            onChange={handleNavigation}
+            onChange={handleTabChange}
             aria-label="WP Schedule Manager navigation"
             variant="standard"
             sx={{ 
