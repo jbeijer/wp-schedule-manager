@@ -172,11 +172,27 @@ class WP_Schedule_Manager_API {
             // Use the Organization model to get all organizations
             require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
             require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-db.php';
-WP_Schedule_Manager_DB::create_tables();
-$organization_model = new WP_Schedule_Manager_Organization();
+            WP_Schedule_Manager_DB::create_tables();
+            $organization_model = new WP_Schedule_Manager_Organization();
             
-            // Get organizations
-            $organizations_data = $organization_model->all();
+            // Check if we're requesting a hierarchical view
+            $hierarchical = isset($request['hierarchical']) ? filter_var($request['hierarchical'], FILTER_VALIDATE_BOOLEAN) : false;
+            
+            // Check if we're filtering by parent_id
+            $parent_id = isset($request['parent_id']) ? intval($request['parent_id']) : null;
+            
+            if ($hierarchical) {
+                // Get organizations in a tree structure
+                $organizations_data = $organization_model->get_tree();
+                return rest_ensure_response($organizations_data);
+            } else if ($parent_id !== null) {
+                // Get organizations with the specified parent_id
+                $organizations_data = $organization_model->get_children($parent_id);
+            } else {
+                // Get all organizations
+                $organizations_data = $organization_model->all('name', 'ASC');
+            }
+            
             $organizations = array();
             
             foreach ($organizations_data as $organization) {
@@ -191,7 +207,7 @@ $organization_model = new WP_Schedule_Manager_Organization();
             // Return error response
             return new WP_Error(
                 'rest_organization_error',
-                __('An error occurred while retrieving organizations: ' . $e->getMessage(), 'wp-schedule-manager'),
+                __('Error retrieving organizations: ' . $e->getMessage(), 'wp-schedule-manager'),
                 array('status' => 500)
             );
         }
@@ -251,6 +267,24 @@ $organization_model = new WP_Schedule_Manager_Organization();
         }
         
         $organization = $this->prepare_organization_for_response($organization_data);
+        
+        // Check if we should include hierarchy information
+        $include_hierarchy = isset($request['include_hierarchy']) ? filter_var($request['include_hierarchy'], FILTER_VALIDATE_BOOLEAN) : false;
+        
+        if ($include_hierarchy) {
+            // Add ancestors
+            $ancestors = $organization_model->get_ancestors($id);
+            $organization['ancestors'] = array_map([$this, 'prepare_organization_for_response'], $ancestors);
+            
+            // Add children
+            $children = $organization_model->get_children($id);
+            $organization['children'] = array_map([$this, 'prepare_organization_for_response'], $children);
+            
+            // Add descendants count
+            $descendants = $organization_model->get_descendants($id);
+            $organization['descendants_count'] = count($descendants);
+        }
+        
         return rest_ensure_response($organization);
     }
 

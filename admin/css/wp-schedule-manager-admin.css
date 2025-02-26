@@ -1,0 +1,72 @@
+/**
+ * All of the CSS for your admin-specific functionality should be
+ * included in this file.
+ */
+
+/* Admin App Loading */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 0;
+}
+
+.loading-spinner {
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid #3498db;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 2s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Tools Page */
+.card {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.tool-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+/* Organization Hierarchy */
+.organization-tree-item {
+    padding-left: 20px;
+    border-left: 1px solid #ddd;
+    margin-bottom: 10px;
+}
+
+.organization-tree-item:last-child {
+    border-left: none;
+}
+
+.organization-tree-item-content {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.organization-tree-toggle {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.organization-tree-actions {
+    margin-left: auto;
+}

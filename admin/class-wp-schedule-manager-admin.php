@@ -7,15 +7,6 @@
 class WP_Schedule_Manager_Admin {
 
     /**
-     * The permissions instance.
-     *
-     * @since    1.0.0
-     * @access   private
-     * @var      WP_Schedule_Manager_Permissions    $permissions    The permissions instance.
-     */
-    private $permissions;
-
-    /**
      * The ID of this plugin.
      *
      * @since    1.0.0
@@ -43,7 +34,6 @@ class WP_Schedule_Manager_Admin {
     public function __construct($plugin_name, $version) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
-        $this->permissions = new WP_Schedule_Manager_Permissions();
     }
 
     /**
@@ -59,11 +49,22 @@ class WP_Schedule_Manager_Admin {
             return;
         }
         
+        // Load the admin app styles on all plugin pages
         wp_enqueue_style(
-            'wp-schedule-manager-admin',
-            WP_SCHEDULE_MANAGER_PLUGIN_URL . 'admin/css/wp-schedule-manager-admin.css',
+            'wp-schedule-manager-admin-app',
+            plugin_dir_url(__FILE__) . 'js/build/wp-schedule-manager-admin-asset-main.css',
             array(),
-            $this->version
+            $this->version,
+            'all'
+        );
+        
+        // Also load regular admin styles for all pages
+        wp_enqueue_style(
+            $this->plugin_name,
+            plugin_dir_url(__FILE__) . 'css/wp-schedule-manager-admin.css',
+            array(),
+            $this->version,
+            'all'
         );
     }
 
@@ -80,10 +81,10 @@ class WP_Schedule_Manager_Admin {
             return;
         }
         
-        // Enqueue the admin app script
+        // Load the admin app on all plugin pages
         wp_enqueue_script(
             'wp-schedule-manager-admin-app',
-            WP_SCHEDULE_MANAGER_PLUGIN_URL . 'admin/js/build/wp-schedule-manager-admin.js',
+            plugin_dir_url(__FILE__) . 'js/build/wp-schedule-manager-admin.js',
             array(),
             $this->version,
             true
@@ -99,84 +100,141 @@ class WP_Schedule_Manager_Admin {
                 'userId' => get_current_user_id(),
             )
         );
+        
+        // Also load regular admin scripts for all pages
+        wp_enqueue_script(
+            $this->plugin_name,
+            plugin_dir_url(__FILE__) . 'js/wp-schedule-manager-admin.js',
+            array('jquery'),
+            $this->version,
+            false
+        );
     }
 
     /**
-     * Register the admin menu.
+     * Add plugin admin menu items
      *
      * @since    1.0.0
      */
-    public function add_plugin_admin_menu() {
-        // Check if current user can access admin interface
-        if (!$this->permissions->can_view_admin(get_current_user_id())) {
-            return;
-        }
-        
-        // Add main menu item
+    public function add_admin_menu() {
+        // Main menu item
         add_menu_page(
+            __('WP Schedule Manager', 'wp-schedule-manager'),
             __('Schedule Manager', 'wp-schedule-manager'),
-            __('Schedule Manager', 'wp-schedule-manager'),
-            'read',
+            'manage_options',
             'wp-schedule-manager',
-            array($this, 'display_admin_dashboard'),
+            array($this, 'display_admin_page'),
             'dashicons-calendar-alt',
             30
         );
         
-        // Add submenu items
+        // Dashboard submenu (same as main menu)
         add_submenu_page(
             'wp-schedule-manager',
             __('Dashboard', 'wp-schedule-manager'),
             __('Dashboard', 'wp-schedule-manager'),
-            'read',
+            'manage_options',
             'wp-schedule-manager',
-            array($this, 'display_admin_dashboard')
+            array($this, 'display_admin_page')
         );
         
+        // Organizations submenu
         add_submenu_page(
             'wp-schedule-manager',
             __('Organizations', 'wp-schedule-manager'),
             __('Organizations', 'wp-schedule-manager'),
-            'read',
+            'manage_options',
             'wp-schedule-manager-organizations',
             array($this, 'display_organizations_page')
         );
         
+        // Users submenu
         add_submenu_page(
             'wp-schedule-manager',
             __('Users', 'wp-schedule-manager'),
             __('Users', 'wp-schedule-manager'),
-            'read',
+            'manage_options',
             'wp-schedule-manager-users',
             array($this, 'display_users_page')
         );
         
+        // Resources submenu
         add_submenu_page(
             'wp-schedule-manager',
             __('Resources', 'wp-schedule-manager'),
             __('Resources', 'wp-schedule-manager'),
-            'read',
+            'manage_options',
             'wp-schedule-manager-resources',
             array($this, 'display_resources_page')
         );
         
+        // Shifts submenu
         add_submenu_page(
             'wp-schedule-manager',
             __('Shifts', 'wp-schedule-manager'),
             __('Shifts', 'wp-schedule-manager'),
-            'read',
+            'manage_options',
             'wp-schedule-manager-shifts',
             array($this, 'display_shifts_page')
         );
         
+        // Settings submenu
         add_submenu_page(
             'wp-schedule-manager',
             __('Settings', 'wp-schedule-manager'),
             __('Settings', 'wp-schedule-manager'),
-            'read',
+            'manage_options',
             'wp-schedule-manager-settings',
             array($this, 'display_settings_page')
         );
+        
+        // Tools submenu
+        add_submenu_page(
+            'wp-schedule-manager',
+            __('Tools', 'wp-schedule-manager'),
+            __('Tools', 'wp-schedule-manager'),
+            'manage_options',
+            'wp-schedule-manager-tools',
+            array($this, 'display_tools_page')
+        );
+    }
+    
+    /**
+     * Display the main admin page
+     *
+     * @since    1.0.0
+     */
+    public function display_admin_page() {
+        include_once 'partials/wp-schedule-manager-admin-display.php';
+    }
+    
+    /**
+     * Display the tools page
+     *
+     * @since    1.0.0
+     */
+    public function display_tools_page() {
+        // Check if migration action was triggered
+        if (isset($_POST['wp_schedule_manager_run_migration']) && 
+            check_admin_referer('wp_schedule_manager_run_migration_nonce')) {
+            
+            // Run the migration
+            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/migrations/update-organization-paths.php';
+            $result = wp_schedule_manager_update_organization_paths();
+            
+            if ($result) {
+                echo '<div class="notice notice-success is-dismissible"><p>' . 
+                    __('Organization paths updated successfully.', 'wp-schedule-manager') . 
+                    '</p></div>';
+            } else {
+                echo '<div class="notice notice-error is-dismissible"><p>' . 
+                    __('Failed to update organization paths.', 'wp-schedule-manager') . 
+                    '</p></div>';
+            }
+        }
+        
+        // Display the tools page
+        include_once 'partials/wp-schedule-manager-admin-tools.php';
     }
 
     /**
@@ -303,12 +361,7 @@ class WP_Schedule_Manager_Admin {
      * @since    1.0.0
      */
     public function display_admin_dashboard() {
-        // Check if current user can access admin interface
-        if (!$this->permissions->can_view_admin(get_current_user_id())) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'wp-schedule-manager'));
-        }
-        
-        echo '<div id="wp-schedule-manager-admin-app"></div>';
+        echo '<div id="wp-schedule-manager-admin-app" data-page="dashboard"></div>';
     }
 
     /**
@@ -317,11 +370,6 @@ class WP_Schedule_Manager_Admin {
      * @since    1.0.0
      */
     public function display_organizations_page() {
-        // Check if current user can access admin interface
-        if (!$this->permissions->can_view_admin(get_current_user_id())) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'wp-schedule-manager'));
-        }
-        
         echo '<div id="wp-schedule-manager-admin-app" data-page="organizations"></div>';
     }
 
@@ -331,11 +379,6 @@ class WP_Schedule_Manager_Admin {
      * @since    1.0.0
      */
     public function display_users_page() {
-        // Check if current user can access admin interface
-        if (!$this->permissions->can_view_admin(get_current_user_id())) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'wp-schedule-manager'));
-        }
-        
         echo '<div id="wp-schedule-manager-admin-app" data-page="users"></div>';
     }
 
@@ -345,11 +388,6 @@ class WP_Schedule_Manager_Admin {
      * @since    1.0.0
      */
     public function display_resources_page() {
-        // Check if current user can access admin interface
-        if (!$this->permissions->can_view_admin(get_current_user_id())) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'wp-schedule-manager'));
-        }
-        
         echo '<div id="wp-schedule-manager-admin-app" data-page="resources"></div>';
     }
 
@@ -359,11 +397,6 @@ class WP_Schedule_Manager_Admin {
      * @since    1.0.0
      */
     public function display_shifts_page() {
-        // Check if current user can access admin interface
-        if (!$this->permissions->can_view_admin(get_current_user_id())) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'wp-schedule-manager'));
-        }
-        
         echo '<div id="wp-schedule-manager-admin-app" data-page="shifts"></div>';
     }
 
@@ -373,11 +406,6 @@ class WP_Schedule_Manager_Admin {
      * @since    1.0.0
      */
     public function display_settings_page() {
-        // Check if current user can access admin interface
-        if (!$this->permissions->can_view_admin(get_current_user_id())) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'wp-schedule-manager'));
-        }
-        
         echo '<div id="wp-schedule-manager-admin-app" data-page="settings"></div>';
     }
 }

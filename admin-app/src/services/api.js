@@ -51,17 +51,54 @@ export const organizationApi = {
   /**
    * Get all organizations
    * 
+   * @param {Object} options - Options for the request
+   * @param {boolean} options.hierarchical - Whether to return organizations in a hierarchical structure
+   * @param {number} options.parent_id - Filter organizations by parent ID
    * @returns {Promise} - The fetch promise
    */
-  getAll: () => apiRequest('/organizations'),
+  getAll: (options = {}) => {
+    let endpoint = '/organizations';
+    const params = new URLSearchParams();
+    
+    if (options.hierarchical) {
+      params.append('hierarchical', 'true');
+    }
+    
+    if (options.parent_id !== undefined) {
+      params.append('parent_id', options.parent_id);
+    }
+    
+    const queryString = params.toString();
+    if (queryString) {
+      endpoint += `?${queryString}`;
+    }
+    
+    return apiRequest(endpoint);
+  },
 
   /**
    * Get a single organization
    * 
    * @param {number} id - The organization ID
+   * @param {Object} options - Options for the request
+   * @param {boolean} options.include_hierarchy - Whether to include hierarchy information
    * @returns {Promise} - The fetch promise
    */
-  getById: (id) => apiRequest(`/organizations/${id}`),
+  getById: (id, options = {}) => {
+    let endpoint = `/organizations/${id}`;
+    const params = new URLSearchParams();
+    
+    if (options.include_hierarchy) {
+      params.append('include_hierarchy', 'true');
+    }
+    
+    const queryString = params.toString();
+    if (queryString) {
+      endpoint += `?${queryString}`;
+    }
+    
+    return apiRequest(endpoint);
+  },
 
   /**
    * Create a new organization

@@ -111,7 +111,7 @@ class WP_Schedule_Manager {
         $plugin_admin = new WP_Schedule_Manager_Admin($this->plugin_name, $this->version);
         
         // Admin menu and pages
-        $this->loader->add_action('admin_menu', $plugin_admin, 'add_plugin_admin_menu');
+        $this->loader->add_action('admin_menu', $plugin_admin, 'add_admin_menu');
         
         // Admin scripts and styles
         $this->loader->add_action('admin_enqueue_scripts', $plugin_admin, 'enqueue_styles');
@@ -175,6 +175,9 @@ class WP_Schedule_Manager {
         // Create default roles and capabilities
         self::create_roles_and_capabilities();
         
+        // Run migration to update organization paths
+        self::run_migrations();
+        
         // Flush rewrite rules for custom post types
         flush_rewrite_rules();
     }
@@ -196,5 +199,15 @@ class WP_Schedule_Manager {
      */
     private static function create_roles_and_capabilities() {
         // Implementation will be added later
+    }
+    
+    /**
+     * Run plugin migrations.
+     *
+     * @since    1.0.0
+     */
+    private static function run_migrations() {
+        // Run organization paths migration
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/migrations/update-organization-paths.php';
     }
 }

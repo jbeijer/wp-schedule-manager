@@ -27,6 +27,7 @@ class WP_Schedule_Manager_DB {
             name varchar(255) NOT NULL,
             description text,
             parent_id bigint(20) DEFAULT NULL,
+            path varchar(255) DEFAULT '/',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
