@@ -1,0 +1,61 @@
+# WordPress specific files
+wp-config.php
+wp-content/advanced-cache.php
+wp-content/backup-*
+wp-content/backups/
+wp-content/blogs.dir/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/uploads/
+wp-content/wp-cache-config.php
+
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnp
+.pnp.js
+
+# Build files
+/build/
+/dist/
+admin-app/build/
+admin-app/dist/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Dependency directories
+/vendor/
+/composer.lock
+
+# Logs
+*.log
+logs/
+
+# Package files
+*.zip
+*.tar.gz
+*.tgz
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Cache files
+.phpunit.result.cache
