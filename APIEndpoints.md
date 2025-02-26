@@ -9,33 +9,33 @@ All API requests require authentication. The plugin uses WordPress's built-in au
 ## Organizations Endpoints
 
 ### Get All Organizations
-- **Endpoint**: `/organizations`
+- **Endpoint**: `/wp-schedule-manager/v1/organizations`
 - **Method**: GET
 - **Permission**: User must have permission to view organizations
 - **Response**: Array of organization objects
 
 ### Create Organization
-- **Endpoint**: `/organizations`
+- **Endpoint**: `/wp-schedule-manager/v1/organizations`
 - **Method**: POST
 - **Permission**: User must have permission to create organizations
 - **Request Body**: Organization data
 - **Response**: Created organization object
 
 ### Get Single Organization
-- **Endpoint**: `/organizations/{id}`
+- **Endpoint**: `/wp-schedule-manager/v1/organizations/{id}`
 - **Method**: GET
 - **Permission**: User must have permission to view the specific organization
 - **Response**: Organization object
 
 ### Update Organization
-- **Endpoint**: `/organizations/{id}`
+- **Endpoint**: `/wp-schedule-manager/v1/organizations/{id}`
 - **Method**: PUT/PATCH
 - **Permission**: User must have permission to update the specific organization
 - **Request Body**: Updated organization data
 - **Response**: Updated organization object
 
 ### Delete Organization
-- **Endpoint**: `/organizations/{id}`
+- **Endpoint**: `/wp-schedule-manager/v1/organizations/{id}`
 - **Method**: DELETE
 - **Permission**: User must have permission to delete the specific organization
 - **Response**: Success message
@@ -43,13 +43,13 @@ All API requests require authentication. The plugin uses WordPress's built-in au
 ## Users-Organizations Endpoints
 
 ### Get Users-Organizations
-- **Endpoint**: `/users-organizations`
+- **Endpoint**: `/wp-schedule-manager/v1/users-organizations`
 - **Method**: GET
 - **Permission**: User must have permission to view user-organization relationships
 - **Response**: Array of user-organization relationship objects
 
 ### Create User-Organization Relationship
-- **Endpoint**: `/users-organizations`
+- **Endpoint**: `/wp-schedule-manager/v1/users-organizations`
 - **Method**: POST
 - **Permission**: User must have permission to create user-organization relationships
 - **Request Body**: User-organization relationship data
@@ -58,33 +58,33 @@ All API requests require authentication. The plugin uses WordPress's built-in au
 ## Shifts Endpoints
 
 ### Get All Shifts
-- **Endpoint**: `/shifts`
+- **Endpoint**: `/wp-schedule-manager/v1/shifts`
 - **Method**: GET
 - **Permission**: User must have permission to view shifts
 - **Response**: Array of shift objects
 
 ### Create Shift
-- **Endpoint**: `/shifts`
+- **Endpoint**: `/wp-schedule-manager/v1/shifts`
 - **Method**: POST
 - **Permission**: User must have permission to create shifts
 - **Request Body**: Shift data
 - **Response**: Created shift object
 
 ### Get Single Shift
-- **Endpoint**: `/shifts/{id}`
+- **Endpoint**: `/wp-schedule-manager/v1/shifts/{id}`
 - **Method**: GET
 - **Permission**: User must have permission to view the specific shift
 - **Response**: Shift object
 
 ### Update Shift
-- **Endpoint**: `/shifts/{id}`
+- **Endpoint**: `/wp-schedule-manager/v1/shifts/{id}`
 - **Method**: PUT/PATCH
 - **Permission**: User must have permission to update the specific shift
 - **Request Body**: Updated shift data
 - **Response**: Updated shift object
 
 ### Delete Shift
-- **Endpoint**: `/shifts/{id}`
+- **Endpoint**: `/wp-schedule-manager/v1/shifts/{id}`
 - **Method**: DELETE
 - **Permission**: User must have permission to delete the specific shift
 - **Response**: Success message
@@ -100,7 +100,7 @@ All endpoints return standardized error responses with the following structure:
 ```json
 {
   "code": "error_code",
-  "message": "Human-readable error message",
+  "message": "Error message",
   "data": {
     "status": 400
   }

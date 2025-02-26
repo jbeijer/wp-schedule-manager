@@ -69,3 +69,7 @@ logs/
 
 # Cache files
 .phpunit.result.cache
+
+knowledge-base.md
+databas.md
+
