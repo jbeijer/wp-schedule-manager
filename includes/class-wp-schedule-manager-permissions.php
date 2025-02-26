@@ -126,87 +126,6 @@ class WP_Schedule_Manager_Permissions {
     }
 
     /**
-     * Check if a user can edit a shift.
-     *
-     * @since    1.0.0
-     * @param    int       $user_id     The user ID.
-     * @param    object    $shift       The shift object.
-     * @return   bool                   True if the user can edit the shift, false otherwise.
-     */
-    public function can_edit_shift($user_id, $shift) {
-        // WordPress administrators can edit all shifts
-        if (user_can($user_id, 'administrator')) {
-            return true;
-        }
-        
-        // Shift creator can edit their own shifts
-        if ($shift->created_by == $user_id) {
-            return true;
-        }
-        
-        // Schedulers and admins can edit shifts in their organization
-        if ($this->user_organization->user_has_role($user_id, $shift->organization_id, 'scheduler')) {
-            return true;
-        }
-        
-        // Check if user is a scheduler or admin of a parent organization
-        $parents = $this->organization->get_parents($shift->organization_id);
-        foreach ($parents as $parent) {
-            if ($this->user_organization->user_has_role($user_id, $parent->id, 'admin')) {
-                return true;
-            }
-        }
-        
-        return false;
-    }
-
-    /**
-     * Check if a user can book a shift.
-     *
-     * @since    1.0.0
-     * @param    int       $user_id     The user ID.
-     * @param    object    $shift       The shift object.
-     * @return   bool                   True if the user can book the shift, false otherwise.
-     */
-    public function can_book_shift($user_id, $shift) {
-        // Can't book already assigned shifts
-        if ($shift->status !== 'open') {
-            return false;
-        }
-        
-        // WordPress administrators can book all shifts
-        if (user_can($user_id, 'administrator')) {
-            return true;
-        }
-        
-        // User must be a member of the organization
-        if (!$this->user_organization->get_user_role($user_id, $shift->organization_id)) {
-            return false;
-        }
-        
-        // Check for scheduling conflicts
-        $shift_model = new WP_Schedule_Manager_Shift();
-        $user_shifts = $shift_model->get_user_shifts(
-            $user_id, 
-            'assigned', 
-            date('Y-m-d', strtotime($shift->start_time)), 
-            date('Y-m-d', strtotime($shift->end_time))
-        );
-        
-        foreach ($user_shifts as $user_shift) {
-            // Check for overlap
-            if (
-                (strtotime($user_shift->start_time) <= strtotime($shift->end_time)) &&
-                (strtotime($user_shift->end_time) >= strtotime($shift->start_time))
-            ) {
-                return false;
-            }
-        }
-        
-        return true;
-    }
-
-    /**
      * Check if a user can view the admin interface.
      *
      * @since    1.0.0
@@ -331,5 +250,231 @@ class WP_Schedule_Manager_Permissions {
         
         // By default, only administrators can create organizations
         return false;
+    }
+
+    /**
+     * Check if a user can view a schedule.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id           The user ID.
+     * @param    int       $organization_id    The organization ID.
+     * @return   bool                         True if the user can view the schedule, false otherwise.
+     */
+    public function can_view_schedule($user_id, $organization_id) {
+        // WordPress-administratörer kan alltid se scheman
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        // Kontrollera om användaren har view_schedule capability
+        if (!user_can($user_id, 'view_schedule')) {
+            return false;
+        }
+        
+        // Kontrollera om användaren är medlem i organisationen
+        return $this->user_organization->is_member($user_id, $organization_id);
+    }
+    
+    /**
+     * Check if a user can book a shift.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id     The user ID.
+     * @param    object    $shift       The shift object.
+     * @return   bool                   True if the user can book the shift, false otherwise.
+     */
+    public function can_book_shift($user_id, $shift) {
+        // WordPress-administratörer kan alltid boka pass
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        // Grundläggande behörighetskontroll
+        if (!user_can($user_id, 'manage_own_shifts')) {
+            return false;
+        }
+        
+        // Om det är någon annans pass, kontrollera om användaren är schemaläggare
+        if (isset($shift->user_id) && $shift->user_id !== $user_id) {
+            $user_role = $this->user_organization->get_user_role($user_id, $shift->organization_id);
+            if ($user_role !== 'scheduler' && $user_role !== 'admin') {
+                return false;
+            }
+        }
+        
+        // Kontrollera om användaren är medlem i organisationen
+        if (!$this->user_organization->is_member($user_id, $shift->organization_id)) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Check if a user can manage all shifts in an organization.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id           The user ID.
+     * @param    int       $organization_id    The organization ID.
+     * @return   bool                         True if the user can manage shifts, false otherwise.
+     */
+    public function can_manage_shifts($user_id, $organization_id) {
+        // WordPress-administratörer kan alltid hantera pass
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        // Kontrollera om användaren har manage_all_shifts capability
+        if (!user_can($user_id, 'manage_all_shifts')) {
+            return false;
+        }
+        
+        // Kontrollera användarens roll i organisationen
+        $user_role = $this->user_organization->get_user_role($user_id, $organization_id);
+        return $user_role === 'scheduler' || $user_role === 'admin';
+    }
+    
+    /**
+     * Check if a user can manage resources in an organization.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id           The user ID.
+     * @param    int       $organization_id    The organization ID.
+     * @return   bool                         True if the user can manage resources, false otherwise.
+     */
+    public function can_manage_resources($user_id, $organization_id) {
+        // WordPress-administratörer kan alltid hantera resurser
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        // Kontrollera om användaren har manage_resources capability
+        if (!user_can($user_id, 'manage_resources')) {
+            return false;
+        }
+        
+        // Kontrollera användarens roll i organisationen
+        $user_role = $this->user_organization->get_user_role($user_id, $organization_id);
+        return $user_role === 'admin';
+    }
+    
+    /**
+     * Check if a user has scheduler role in any organization.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id    The user ID.
+     * @return   bool                  True if the user has scheduler role anywhere, false otherwise.
+     */
+    public function user_has_scheduler_role_anywhere($user_id) {
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        $user_orgs = $this->user_organization->get_user_organizations($user_id);
+        
+        foreach ($user_orgs as $user_org) {
+            if ($user_org->role === 'scheduler' || $user_org->role === 'admin') {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Check if a user has admin role in any organization.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id    The user ID.
+     * @return   bool                  True if the user has admin role anywhere, false otherwise.
+     */
+    public function user_has_admin_role_anywhere($user_id) {
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        $user_orgs = $this->user_organization->get_user_organizations($user_id);
+        
+        foreach ($user_orgs as $user_org) {
+            if ($user_org->role === 'admin') {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Get all user capabilities for the React app.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id    The user ID.
+     * @return   array                 The user capabilities.
+     */
+    public function get_user_capabilities($user_id) {
+        $capabilities = array(
+            'isAdmin' => user_can($user_id, 'administrator'),
+            'viewSchedule' => user_can($user_id, 'view_schedule'),
+            'manageOwnShifts' => user_can($user_id, 'manage_own_shifts'),
+            'manageAllShifts' => user_can($user_id, 'manage_all_shifts'),
+            'manageResources' => user_can($user_id, 'manage_resources'),
+            'organizations' => array()
+        );
+        
+        // Lägg till organisations-specifika behörigheter
+        $user_orgs = $this->user_organization->get_user_organizations($user_id);
+        foreach ($user_orgs as $user_org) {
+            $org_caps = array(
+                'id' => $user_org->organization_id,
+                'name' => $user_org->organization_name,
+                'role' => $user_org->role,
+                'viewSchedule' => true, // Alla medlemmar kan se schemat
+                'bookShift' => true,    // Alla medlemmar kan boka egna pass
+                'manageShift' => $user_org->role === 'scheduler' || $user_org->role === 'admin',
+                'manageResources' => $user_org->role === 'admin'
+            );
+            
+            $capabilities['organizations'][] = $org_caps;
+        }
+        
+        return $capabilities;
+    }
+    
+    /**
+     * Check if a user can edit a shift.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id     The user ID.
+     * @param    object    $shift       The shift object.
+     * @return   bool                   True if the user can edit the shift, false otherwise.
+     */
+    public function can_edit_shift($user_id, $shift) {
+        // WordPress-administratörer kan alltid redigera pass
+        if (user_can($user_id, 'administrator')) {
+            return true;
+        }
+        
+        // Kontrollera om användaren har behörighet att hantera pass
+        if (!user_can($user_id, 'manage_own_shifts')) {
+            return false;
+        }
+        
+        // Om det är användarens eget pass
+        if (isset($shift->user_id) && $shift->user_id == $user_id) {
+            return true;
+        }
+        
+        // Om det är någon annans pass, kontrollera om användaren är schemaläggare eller admin
+        $user_role = $this->user_organization->get_user_role($user_id, $shift->organization_id);
+        if ($user_role !== 'scheduler' && $user_role !== 'admin') {
+            return false;
+        }
+        
+        // Kontrollera om användaren är medlem i organisationen
+        if (!$this->user_organization->is_member($user_id, $shift->organization_id)) {
+            return false;
+        }
+        
+        return true;
     }
 }

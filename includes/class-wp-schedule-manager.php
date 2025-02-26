@@ -198,7 +198,31 @@ class WP_Schedule_Manager {
      * @since    1.0.0
      */
     private static function create_roles_and_capabilities() {
-        // Implementation will be added later
+        // Skapa Schemaanvändare-roll
+        add_role(
+            'schedule_user',
+            __('Schemaanvändare', 'wp-schedule-manager'),
+            array(
+                'read' => true,                 // Grundläggande läsbehörighet i WordPress
+                'view_schedule' => true,        // Custom capability för att se scheman
+                'manage_own_shifts' => true,    // Custom capability för att hantera egna pass
+            )
+        );
+        
+        // Ge admin alla behörigheter
+        $admin = get_role('administrator');
+        $admin->add_cap('view_schedule');
+        $admin->add_cap('manage_own_shifts');
+        $admin->add_cap('manage_all_shifts');
+        $admin->add_cap('manage_resources');
+        $admin->add_cap('manage_organizations');
+        
+        // Ge Schedule User grundläggande behörigheter
+        $schedule_user = get_role('schedule_user');
+        if ($schedule_user) {
+            $schedule_user->add_cap('view_schedule');
+            $schedule_user->add_cap('manage_own_shifts');
+        }
     }
     
     /**

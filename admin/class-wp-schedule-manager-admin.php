@@ -81,23 +81,35 @@ class WP_Schedule_Manager_Admin {
             return;
         }
         
-        // Load the admin app on all plugin pages
+        // Get current user permissions
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-permissions.php';
+        $permissions = new WP_Schedule_Manager_Permissions();
+        $user_id = get_current_user_id();
+        
+        // Enqueue React app script
         wp_enqueue_script(
             'wp-schedule-manager-admin-app',
-            plugin_dir_url(__FILE__) . 'js/build/wp-schedule-manager-admin.js',
-            array(),
+            WP_SCHEDULE_MANAGER_PLUGIN_URL . 'admin/js/build/wp-schedule-manager-admin.js',
+            array('wp-element'),
             $this->version,
             true
         );
         
-        // Localize the script with data
+        // Localize script with plugin data
         wp_localize_script(
             'wp-schedule-manager-admin-app',
             'wpScheduleManager',
             array(
                 'apiUrl' => esc_url_raw(rest_url('wp-schedule-manager/v1')),
                 'nonce' => wp_create_nonce('wp_rest'),
-                'userId' => get_current_user_id(),
+                'userId' => $user_id,
+                'userCapabilities' => $permissions->get_user_capabilities($user_id),
+                'translations' => array(
+                    'confirmDelete' => __('Är du säker på att du vill ta bort detta?', 'wp-schedule-manager'),
+                    'bookShift' => __('Boka pass', 'wp-schedule-manager'),
+                    'cancelShift' => __('Avboka pass', 'wp-schedule-manager'),
+                    // Fler översättningar...
+                )
             )
         );
         

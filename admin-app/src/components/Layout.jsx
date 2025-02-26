@@ -19,15 +19,16 @@ import {
   CalendarMonth as ShiftsIcon,
   Settings as SettingsIcon
 } from '@mui/icons-material';
+import { canUserPerformAction, userHasRoleAnywhere } from '../utils/permissions';
 
 // Define menu items with paths that match the hash router format
 const menuItems = [
-  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-  { text: 'Organizations', icon: <OrganizationsIcon />, path: '/organizations' },
-  { text: 'Users', icon: <UsersIcon />, path: '/users' },
-  { text: 'Resources', icon: <ResourcesIcon />, path: '/resources' },
-  { text: 'Shifts', icon: <ShiftsIcon />, path: '/shifts' },
-  { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+  { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', requiredPermission: null },
+  { text: 'Organizations', icon: <OrganizationsIcon />, path: '/organizations', requiredPermission: 'manageResources' },
+  { text: 'Users', icon: <UsersIcon />, path: '/users', requiredPermission: 'manageResources' },
+  { text: 'Resources', icon: <ResourcesIcon />, path: '/resources', requiredPermission: 'manageResources' },
+  { text: 'Shifts', icon: <ShiftsIcon />, path: '/shifts', requiredPermission: 'viewSchedule' },
+  { text: 'Settings', icon: <SettingsIcon />, path: '/settings', requiredPermission: 'manageResources' },
 ];
 
 function Layout({ children }) {
@@ -44,6 +45,12 @@ function Layout({ children }) {
     // Navigate to the selected path
     navigate(newPath);
   };
+
+  // Filtrera menypunkter baserat på användarens behörigheter
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!item.requiredPermission) return true;
+    return canUserPerformAction(item.requiredPermission);
+  });
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -78,7 +85,7 @@ function Layout({ children }) {
               }
             }}
           >
-            {menuItems.map((item) => (
+            {filteredMenuItems.map((item) => (
               <Tab 
                 key={item.text} 
                 label={

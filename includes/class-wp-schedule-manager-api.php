@@ -239,8 +239,17 @@ class WP_Schedule_Manager_API {
      * @return   bool
      */
     public function get_organizations_permissions_check( $request ) {
-        // For testing purposes, allow all requests
-        return true;
+        $current_user_id = get_current_user_id();
+        
+        // Användare måste vara inloggad
+        if (!$current_user_id) {
+            return false;
+        }
+        
+        // Kontrollera om användaren har behörighet att se organisationer
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-permissions.php';
+        $permissions = new WP_Schedule_Manager_Permissions();
+        return $permissions->user_can_view_organizations();
     }
 
     /**
@@ -506,29 +515,24 @@ class WP_Schedule_Manager_API {
      * @return   bool
      */
     public function get_shifts_permissions_check( $request ) {
-        $permissions = new WP_Schedule_Manager_Permissions();
+        $current_user_id = get_current_user_id();
         
-        // If organization_id is provided, check if user can view shifts for that organization
-        if ( ! empty( $request['organization_id'] ) ) {
-            return $permissions->user_can_view_shifts_for_organization( (int) $request['organization_id'] );
+        // Användare måste vara inloggad
+        if (!$current_user_id) {
+            return false;
         }
         
-        // If user_id is provided, check if the current user is requesting their own shifts or has permission
-        if ( ! empty( $request['user_id'] ) ) {
-            $user_id = (int) $request['user_id'];
-            $current_user_id = get_current_user_id();
-            
-            if ( $user_id === $current_user_id ) {
-                return true; // Users can always view their own shifts
-            }
-            
-            return $permissions->user_can_view_shifts_for_user( $user_id );
+        // Om organization_id är angivet, kontrollera om användaren kan se scheman för den organisationen
+        if (!empty($request['organization_id'])) {
+            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-permissions.php';
+            $permissions = new WP_Schedule_Manager_Permissions();
+            return $permissions->can_view_schedule($current_user_id, (int)$request['organization_id']);
         }
         
-        // Default permission check for viewing all shifts
-        return $permissions->user_can_view_all_shifts();
+        // Om ingen organisation är angiven, se om användaren har grundläggande behörighet
+        return user_can($current_user_id, 'view_schedule');
     }
-
+    
     /**
      * Get a single shift
      *
@@ -612,14 +616,21 @@ class WP_Schedule_Manager_API {
      * @return   bool
      */
     public function create_shift_permissions_check( $request ) {
-        $permissions = new WP_Schedule_Manager_Permissions();
+        $current_user_id = get_current_user_id();
         
-        // If organization_id is provided, check if user can create shifts for that organization
-        if ( ! empty( $request['organization_id'] ) ) {
-            return $permissions->user_can_create_shifts_for_organization( (int) $request['organization_id'] );
+        // Användare måste vara inloggad
+        if (!$current_user_id) {
+            return false;
         }
         
-        return $permissions->user_can_create_shifts();
+        // Kontrollera om användaren kan skapa pass i den angivna organisationen
+        if (!empty($request['organization_id'])) {
+            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-permissions.php';
+            $permissions = new WP_Schedule_Manager_Permissions();
+            return $permissions->can_create_shifts($current_user_id, (int)$request['organization_id']);
+        }
+        
+        return false;
     }
 
     /**
@@ -659,30 +670,23 @@ class WP_Schedule_Manager_API {
      * @return   bool
      */
     public function update_shift_permissions_check( $request ) {
-        $id = (int) $request['id'];
-        $shift_model = new WP_Schedule_Manager_Shift();
-        $shift = $shift_model->get( $id );
+        $current_user_id = get_current_user_id();
+        $shift_id = (int)$request['id'];
         
-        if ( empty( $shift ) ) {
+        // Hämta shift-data för att kontrollera organisation
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-shift.php';
+        $shift_model = new WP_Schedule_Manager_Shift();
+        $shift = $shift_model->find($shift_id);
+        
+        if (!$shift) {
             return false;
         }
         
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-permissions.php';
         $permissions = new WP_Schedule_Manager_Permissions();
         
-        // Check if user is assigned to this shift
-        $current_user_id = get_current_user_id();
-        if ( isset( $shift['user_id'] ) && (int) $shift['user_id'] === $current_user_id ) {
-            // Users can update their own shifts but only certain fields
-            // This would need more complex logic in a real implementation
-            return true;
-        }
-        
-        // Check if user can edit shifts for this organization
-        if ( isset( $shift['organization_id'] ) ) {
-            return $permissions->user_can_edit_shifts_for_organization( (int) $shift['organization_id'] );
-        }
-        
-        return $permissions->user_can_edit_all_shifts();
+        // Kontrollera om användaren kan hantera pass i organisationen
+        return $permissions->can_edit_shift($current_user_id, $shift);
     }
 
     /**
