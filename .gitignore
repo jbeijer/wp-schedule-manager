@@ -22,6 +22,16 @@ yarn-error.log
 /dist/
 admin-app/build/
 admin-app/dist/
+public-app/build/
+public-app/dist/
+/admin/js/build/
+/public/js/build/
+/admin-app/node_modules/
+/public-app/node_modules/
+/admin/css/build/
+/public/css/build/
+*.min.js
+*.min.css
 
 # Environment files
 .env
