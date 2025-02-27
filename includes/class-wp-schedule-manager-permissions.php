@@ -11,7 +11,7 @@ class WP_Schedule_Manager_Permissions {
      *
      * @since    1.0.0
      * @access   private
-     * @var      WP_Schedule_Manager_User_Organization    $user_organization    User organization model.
+     * @var      WP_Schedule_Manager_User_Org_Relationship    $user_organization    User organization model.
      */
     private $user_organization;
 
@@ -30,7 +30,7 @@ class WP_Schedule_Manager_Permissions {
      * @since    1.0.0
      */
     public function __construct() {
-        $this->user_organization = new WP_Schedule_Manager_User_Organization();
+        $this->user_organization = new WP_Schedule_Manager_User_Org_Relationship();
         $this->organization = new WP_Schedule_Manager_Organization();
     }
 

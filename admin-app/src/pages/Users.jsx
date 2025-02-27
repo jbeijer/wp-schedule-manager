@@ -30,42 +30,7 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon
 } from '@mui/icons-material';
-
-// Mock API service for users - replace with actual API calls
-const mockUserApi = {
-  getUsers: () => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve([
-          { id: 1, display_name: 'John Doe', user_email: 'john@example.com', role: 'admin' },
-          { id: 2, display_name: 'Jane Smith', user_email: 'jane@example.com', role: 'schemalaggare' },
-          { id: 3, display_name: 'Bob Johnson', user_email: 'bob@example.com', role: 'bas' },
-        ]);
-      }, 1000);
-    });
-  },
-  createUser: (userData) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ id: 4, ...userData });
-      }, 1000);
-    });
-  },
-  updateUser: (userId, userData) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ id: userId, ...userData });
-      }, 1000);
-    });
-  },
-  deleteUser: (userId) => {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        resolve({ success: true });
-      }, 1000);
-    });
-  }
-};
+import { userApi } from '../services/api';
 
 function Users() {
   const [users, setUsers] = useState([]);
@@ -105,8 +70,8 @@ function Users() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Replace with actual API call
-      const data = await mockUserApi.getUsers();
+      // Use the real API method from userApi
+      const data = await userApi.getAllUsers();
       setUsers(data);
       setError(null);
     } catch (err) {
@@ -195,9 +160,10 @@ function Users() {
   const handleSaveUser = async () => {
     try {
       if (dialogMode === 'create') {
-        // Replace with actual API call
-        const newUser = await mockUserApi.createUser(formData);
-        setUsers([...users, newUser]);
+        // Use the real API method
+        const newUser = await userApi.createUser(formData);
+        // Refresh the users list instead of manually updating it
+        await fetchUsers();
         
         setSnackbar({
           open: true,
@@ -205,9 +171,10 @@ function Users() {
           severity: 'success'
         });
       } else {
-        // Replace with actual API call
-        const updatedUser = await mockUserApi.updateUser(selectedUser.id, formData);
-        setUsers(users.map(user => user.id === selectedUser.id ? updatedUser : user));
+        // Use the real API method
+        await userApi.updateUser(selectedUser.id, formData);
+        // Refresh the users list
+        await fetchUsers();
         
         setSnackbar({
           open: true,
@@ -230,10 +197,11 @@ function Users() {
   // Confirm user deletion
   const handleConfirmDelete = async () => {
     try {
-      // Replace with actual API call
-      await mockUserApi.deleteUser(selectedUser.id);
+      // Use the real API method
+      await userApi.deleteUser(selectedUser.id);
       
-      setUsers(users.filter(user => user.id !== selectedUser.id));
+      // Refresh the users list
+      await fetchUsers();
       
       setSnackbar({
         open: true,
