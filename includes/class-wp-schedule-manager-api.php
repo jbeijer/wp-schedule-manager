@@ -210,7 +210,7 @@ class WP_Schedule_Manager_API {
     public function get_organizations( $request ) {
         try {
             // Use the Organization model to get all organizations
-            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
+            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-organization.php';
             require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-db.php';
             WP_Schedule_Manager_DB::create_tables();
             $organization_model = new WP_Schedule_Manager_Organization();
@@ -303,7 +303,7 @@ class WP_Schedule_Manager_API {
         $id = (int) $request['id'];
         
         // Use the Organization model to get the organization
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-organization.php';
         $organization_model = new WP_Schedule_Manager_Organization();
         $organization_data = $organization_model->find($id);
         
@@ -365,7 +365,7 @@ class WP_Schedule_Manager_API {
         }
         
         // Use the Organization model to create the organization
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-organization.php';
         $organization_model = new WP_Schedule_Manager_Organization();
         
         // Debug: Log the organization data
@@ -413,7 +413,7 @@ class WP_Schedule_Manager_API {
         $id = (int) $request['id'];
         
         // Use the Organization model to find and update the organization
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-organization.php';
         $organization_model = new WP_Schedule_Manager_Organization();
         
         // Check if the organization exists
@@ -470,7 +470,7 @@ class WP_Schedule_Manager_API {
         $id = (int) $request['id'];
         
         // Use the Organization model to find and delete the organization
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-organization.php';
         $organization_model = new WP_Schedule_Manager_Organization();
         
         // Get the organization before deleting it
@@ -714,7 +714,7 @@ class WP_Schedule_Manager_API {
         $shift_id = (int)$request['id'];
         
         // Hämta shift-data för att kontrollera organisation
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-shift.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-shift.php';
         $shift_model = new WP_Schedule_Manager_Shift();
         $shift = $shift_model->find($shift_id);
         
@@ -988,7 +988,7 @@ class WP_Schedule_Manager_API {
         $response = array();
         
         // Get the User Organization instance
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-user-organization.php';
         $user_org = new WP_Schedule_Manager_User_Organization();
         
         foreach ( $users as $user ) {
@@ -1051,7 +1051,7 @@ class WP_Schedule_Manager_API {
         }
         
         // Get the User Organization instance
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-user-organization.php';
         $user_org = new WP_Schedule_Manager_User_Organization();
         
         // Get user organizations and roles
@@ -1119,7 +1119,7 @@ class WP_Schedule_Manager_API {
         if ( isset( $user_data['role'] ) && in_array( $user_data['role'], array( 'admin', 'manager', 'member' ) ) ) {
             // If there's an organization_id, assign the user to the organization with the specified role
             if ( isset( $user_data['organization_id'] ) ) {
-                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
+                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-user-organization.php';
                 $user_org = new WP_Schedule_Manager_User_Organization();
                 $user_org->add_user_to_organization( $user_id, $user_data['organization_id'], $user_data['role'] );
             }
@@ -1187,7 +1187,7 @@ class WP_Schedule_Manager_API {
         if ( isset( $user_data['role'] ) && in_array( $user_data['role'], array( 'admin', 'manager', 'member' ) ) ) {
             // If there's an organization_id, update the user's role in the organization
             if ( isset( $user_data['organization_id'] ) ) {
-                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
+                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-user-organization.php';
                 $user_org = new WP_Schedule_Manager_User_Organization();
                 $user_org->add_user_to_organization( $user_id, $user_data['organization_id'], $user_data['role'] );
             }
@@ -1255,7 +1255,7 @@ class WP_Schedule_Manager_API {
         }
         
         // Clean up user-organization relationships
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-user-organization.php';
         $user_org = new WP_Schedule_Manager_User_Organization();
         $user_org->delete_user_relationships( $user_id );
         
@@ -1334,7 +1334,7 @@ class WP_Schedule_Manager_API {
      * @return   array
      */
     private function get_user_organizations($user_id) {
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'models/class-wp-schedule-manager-user-organization.php';
         $user_org = new WP_Schedule_Manager_User_Organization();
         return $user_org->get_user_organizations($user_id);
     }
