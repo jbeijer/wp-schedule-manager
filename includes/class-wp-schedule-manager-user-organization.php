@@ -4,7 +4,7 @@
  *
  * @since      1.0.0
  */
-class WP_Schedule_Manager_User_Org_Relationship {
+class WP_Schedule_Manager_User_Organization {
 
     /**
      * Get all user-organization relationships.
