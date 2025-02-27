@@ -38,8 +38,8 @@ const mockUserApi = {
       setTimeout(() => {
         resolve([
           { id: 1, display_name: 'John Doe', user_email: 'john@example.com', role: 'admin' },
-          { id: 2, display_name: 'Jane Smith', user_email: 'jane@example.com', role: 'manager' },
-          { id: 3, display_name: 'Bob Johnson', user_email: 'bob@example.com', role: 'member' },
+          { id: 2, display_name: 'Jane Smith', user_email: 'jane@example.com', role: 'schemalaggare' },
+          { id: 3, display_name: 'Bob Johnson', user_email: 'bob@example.com', role: 'bas' },
         ]);
       }, 1000);
     });
@@ -77,7 +77,7 @@ function Users() {
   const [formData, setFormData] = useState({
     display_name: '',
     user_email: '',
-    role: 'member'
+    role: 'bas'
   });
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -85,6 +85,16 @@ function Users() {
     message: '',
     severity: 'success'
   });
+  const [currentUser, setCurrentUser] = useState({ role: 'schemalaggare' }); // Mock current user
+
+  // Add permission utility function
+  const hasPermission = (action, currentUserRole, targetUserRole) => {
+    if (currentUserRole === 'admin') return true;
+    if (currentUserRole === 'schemalaggare') {
+      return action !== 'delete' && targetUserRole === 'bas';
+    }
+    return false;
+  };
 
   // Fetch users on component mount
   useEffect(() => {
@@ -109,17 +119,33 @@ function Users() {
 
   // Open dialog to create a new user
   const handleCreateUser = () => {
+    if (!hasPermission('create', currentUser.role)) {
+      setSnackbar({
+        open: true,
+        message: 'You do not have permission to create users',
+        severity: 'error'
+      });
+      return;
+    }
     setDialogMode('create');
     setFormData({
       display_name: '',
       user_email: '',
-      role: 'member'
+      role: 'bas'
     });
     setOpenDialog(true);
   };
 
   // Open dialog to edit a user
   const handleEditUser = (user) => {
+    if (!hasPermission('edit', currentUser.role, user.role)) {
+      setSnackbar({
+        open: true,
+        message: 'You do not have permission to edit this user',
+        severity: 'error'
+      });
+      return;
+    }
     setDialogMode('edit');
     setSelectedUser(user);
     setFormData({
@@ -132,6 +158,14 @@ function Users() {
 
   // Open dialog to confirm user deletion
   const handleDeleteUser = (user) => {
+    if (!hasPermission('delete', currentUser.role, user.role)) {
+      setSnackbar({
+        open: true,
+        message: 'You do not have permission to delete users',
+        severity: 'error'
+      });
+      return;
+    }
     setSelectedUser(user);
     setOpenDeleteDialog(true);
   };
@@ -228,9 +262,9 @@ function Users() {
     switch (role) {
       case 'admin':
         return 'error';
-      case 'manager':
+      case 'schemalaggare':
         return 'primary';
-      case 'member':
+      case 'bas':
         return 'success';
       default:
         return 'default';
@@ -337,9 +371,9 @@ function Users() {
                 label="Role"
                 onChange={handleInputChange}
               >
+                <MenuItem value="bas">Bas (Anställd)</MenuItem>
+                <MenuItem value="schemalaggare">Schemaläggare</MenuItem>
                 <MenuItem value="admin">Admin</MenuItem>
-                <MenuItem value="manager">Manager</MenuItem>
-                <MenuItem value="member">Member</MenuItem>
               </Select>
             </FormControl>
           </Box>

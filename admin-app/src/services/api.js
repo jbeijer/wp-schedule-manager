@@ -191,7 +191,101 @@ export const shiftApi = {
   })
 };
 
+/**
+ * User API methods
+ */
+export const userApi = {
+  /**
+   * Get all users
+   * 
+   * @param {Object} params - Query parameters
+   * @returns {Promise} - The fetch promise
+   */
+  getAllUsers: (params = {}) => {
+    const queryString = new URLSearchParams(params).toString();
+    return apiRequest(`/users${queryString ? `?${queryString}` : ''}`);
+  },
+
+  /**
+   * Get a single user
+   * 
+   * @param {number} id - The user ID
+   * @returns {Promise} - The fetch promise
+   */
+  getUser: (id) => apiRequest(`/users/${id}`),
+
+  /**
+   * Create a new user
+   * 
+   * @param {Object} data - The user data
+   * @returns {Promise} - The fetch promise
+   */
+  createUser: (data) => apiRequest('/users', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+
+  /**
+   * Update a user
+   * 
+   * @param {number} id - The user ID
+   * @param {Object} data - The user data
+   * @returns {Promise} - The fetch promise
+   */
+  updateUser: (id, data) => apiRequest(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+
+  /**
+   * Delete a user
+   * 
+   * @param {number} id - The user ID
+   * @returns {Promise} - The fetch promise
+   */
+  deleteUser: (id) => apiRequest(`/users/${id}`, {
+    method: 'DELETE'
+  }),
+
+  /**
+   * Get user organizations
+   * 
+   * @param {number} id - The user ID
+   * @returns {Promise} - The fetch promise
+   */
+  getUserOrganizations: (id) => apiRequest(`/users/${id}/organizations`),
+
+  /**
+   * Add a user to an organization
+   * 
+   * @param {number} userId - The user ID
+   * @param {number} organizationId - The organization ID
+   * @param {string} role - The role (admin, manager, member)
+   * @returns {Promise} - The fetch promise
+   */
+  addUserToOrganization: (userId, organizationId, role) => apiRequest(`/users-organizations`, {
+    method: 'POST',
+    body: JSON.stringify({
+      user_id: userId,
+      organization_id: organizationId,
+      role: role
+    })
+  }),
+
+  /**
+   * Remove a user from an organization
+   * 
+   * @param {number} userId - The user ID
+   * @param {number} organizationId - The organization ID
+   * @returns {Promise} - The fetch promise
+   */
+  removeUserFromOrganization: (userId, organizationId) => apiRequest(`/users-organizations/${userId}/${organizationId}`, {
+    method: 'DELETE'
+  })
+};
+
 export default {
   organization: organizationApi,
-  shift: shiftApi
+  shift: shiftApi,
+  user: userApi
 };
