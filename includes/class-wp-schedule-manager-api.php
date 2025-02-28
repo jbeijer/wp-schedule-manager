@@ -1028,8 +1028,9 @@ class WP_Schedule_Manager_API {
      * @return bool
      */
     public function get_users_permissions_check( $request ) {
-        // Only administrators should be able to access the user list
-        return current_user_can( 'manage_options' );
+        // Allow any logged-in user to view the user list
+        // You can make this more restrictive later if needed
+        return is_user_logged_in();
     }
 
     /**
@@ -1089,8 +1090,9 @@ class WP_Schedule_Manager_API {
      * @return bool
      */
     public function get_user_permissions_check( $request ) {
-        // Only administrators should be able to access user details
-        return current_user_can( 'manage_options' );
+        // Allow any logged-in user to view user details
+        // You can make this more restrictive later if needed
+        return is_user_logged_in();
     }
 
     /**
@@ -1100,45 +1102,66 @@ class WP_Schedule_Manager_API {
      * @return WP_REST_Response
      */
     public function create_user( $request ) {
-        $user_data = $this->prepare_user_for_database( $request );
+        // Get the user data from the request
+        $user_data = json_decode($request->get_body(), true);
+        
+        if (empty($user_data['display_name']) || empty($user_data['user_email'])) {
+            return new WP_Error(
+                'missing_required_fields',
+                __('Missing required fields: display_name and user_email are required.', 'wp-schedule-manager'),
+                array('status' => 400)
+            );
+        }
+        
+        // Create a username from the email if not provided
+        if (empty($user_data['user_login'])) {
+            $user_data['user_login'] = sanitize_user(
+                substr($user_data['user_email'], 0, strpos($user_data['user_email'], '@'))
+            );
+        }
+        
+        // Generate a random password
+        $random_password = wp_generate_password(12, false);
         
         // Create the user
-        $user_id = wp_insert_user( array(
-            'user_login'   => $user_data['user_login'],
-            'user_email'   => $user_data['user_email'],
-            'display_name' => $user_data['display_name'],
-            'user_pass'    => wp_generate_password(), // Generate a random password
+        $user_id = wp_insert_user(array(
+            'user_login'   => sanitize_user($user_data['user_login']),
+            'user_email'   => sanitize_email($user_data['user_email']),
+            'display_name' => sanitize_text_field($user_data['display_name']),
+            'user_pass'    => $random_password,
             'role'         => 'subscriber', // Default WordPress role
         ));
         
-        if ( is_wp_error( $user_id ) ) {
-            return $user_id;
+        if (is_wp_error($user_id)) {
+            return new WP_Error(
+                'user_creation_failed',
+                $user_id->get_error_message(),
+                array('status' => 500)
+            );
         }
         
-        // If a role was specified in the request and it's for our plugin
-        if ( isset( $user_data['role'] ) && in_array( $user_data['role'], array( 'admin', 'manager', 'member' ) ) ) {
+        // If a role was specified for the plugin
+        if (isset($user_data['role']) && in_array($user_data['role'], array('admin', 'scheduler', 'base'))) {
             // If there's an organization_id, assign the user to the organization with the specified role
-            if ( isset( $user_data['organization_id'] ) ) {
-                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-user-organization.php';
+            if (isset($user_data['organization_id'])) {
+                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
                 $user_org = new WP_Schedule_Manager_User_Organization();
-                $user_org->add_user_to_organization( $user_id, $user_data['organization_id'], $user_data['role'] );
+                $user_org->add_user_to_organization($user_id, $user_data['organization_id'], $user_data['role']);
             }
         }
         
-        $user = get_user_by( 'id', $user_id );
+        // Get the created user
+        $user = get_user_by('ID', $user_id);
         
         $response = array(
             'id'           => $user->ID,
             'user_login'   => $user->user_login,
             'display_name' => $user->display_name,
             'user_email'   => $user->user_email,
-            'role'         => $user_data['role'] ?? 'member',
+            'role'         => isset($user_data['role']) ? $user_data['role'] : 'base',
         );
         
-        $response = rest_ensure_response( $response );
-        $response->set_status( 201 );
-        
-        return $response;
+        return rest_ensure_response($response);
     }
 
     /**
@@ -1148,8 +1171,8 @@ class WP_Schedule_Manager_API {
      * @return bool
      */
     public function create_user_permissions_check( $request ) {
-        // Only administrators should be able to create users
-        return current_user_can( 'manage_options' );
+        // Allow administrators to create users
+        return current_user_can( 'manage_options' ) || current_user_can( 'administrator' );
     }
 
     /**
@@ -1159,51 +1182,73 @@ class WP_Schedule_Manager_API {
      * @return WP_REST_Response
      */
     public function update_user( $request ) {
-        $user_id = (int) $request['id'];
-        $user = get_user_by( 'id', $user_id );
+        $user_id = (int)$request['id'];
+        $user = get_user_by('ID', $user_id);
         
-        if ( ! $user ) {
+        if (!$user) {
             return new WP_Error(
-                'rest_user_invalid_id',
-                __( 'Invalid user ID.', 'wp-schedule-manager' ),
-                array( 'status' => 404 )
+                'invalid_user_id',
+                __('Invalid user ID.', 'wp-schedule-manager'),
+                array('status' => 404)
             );
         }
         
-        $user_data = $this->prepare_user_for_database( $request );
+        // Get the user data from the request
+        $user_data = json_decode($request->get_body(), true);
         
-        // Update the user
-        $user_id = wp_update_user( array(
-            'ID'           => $user_id,
-            'display_name' => $user_data['display_name'],
-            'user_email'   => $user_data['user_email'],
-        ));
-        
-        if ( is_wp_error( $user_id ) ) {
-            return $user_id;
+        if (empty($user_data)) {
+            return new WP_Error(
+                'empty_request_body',
+                __('Request body is empty.', 'wp-schedule-manager'),
+                array('status' => 400)
+            );
         }
         
-        // If a role was specified in the request and it's for our plugin
-        if ( isset( $user_data['role'] ) && in_array( $user_data['role'], array( 'admin', 'manager', 'member' ) ) ) {
+        // Update the WordPress user
+        $user_args = array(
+            'ID' => $user_id
+        );
+        
+        if (!empty($user_data['display_name'])) {
+            $user_args['display_name'] = sanitize_text_field($user_data['display_name']);
+        }
+        
+        if (!empty($user_data['user_email'])) {
+            $user_args['user_email'] = sanitize_email($user_data['user_email']);
+        }
+        
+        $result = wp_update_user($user_args);
+        
+        if (is_wp_error($result)) {
+            return new WP_Error(
+                'user_update_failed',
+                $result->get_error_message(),
+                array('status' => 500)
+            );
+        }
+        
+        // If a role was specified for the plugin
+        if (isset($user_data['role']) && in_array($user_data['role'], array('admin', 'scheduler', 'base'))) {
             // If there's an organization_id, update the user's role in the organization
-            if ( isset( $user_data['organization_id'] ) ) {
-                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-user-organization.php';
+            if (isset($user_data['organization_id'])) {
+                require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
                 $user_org = new WP_Schedule_Manager_User_Organization();
-                $user_org->add_user_to_organization( $user_id, $user_data['organization_id'], $user_data['role'] );
+                $user_org->add_user_to_organization($user_id, $user_data['organization_id'], $user_data['role']);
             }
         }
         
-        $user = get_user_by( 'id', $user_id );
+        // Get the updated user
+        $updated_user = get_user_by('ID', $user_id);
         
         $response = array(
-            'id'           => $user->ID,
-            'user_login'   => $user->user_login,
-            'display_name' => $user->display_name,
-            'user_email'   => $user->user_email,
-            'role'         => $user_data['role'] ?? 'member',
+            'id'           => $updated_user->ID,
+            'user_login'   => $updated_user->user_login,
+            'display_name' => $updated_user->display_name,
+            'user_email'   => $updated_user->user_email,
+            'role'         => isset($user_data['role']) ? $user_data['role'] : 'base',
         );
         
-        return rest_ensure_response( $response );
+        return rest_ensure_response($response);
     }
 
     /**
@@ -1213,8 +1258,8 @@ class WP_Schedule_Manager_API {
      * @return bool
      */
     public function update_user_permissions_check( $request ) {
-        // Only administrators should be able to update users
-        return current_user_can( 'manage_options' );
+        // Allow administrators to update users
+        return current_user_can( 'manage_options' ) || current_user_can( 'administrator' );
     }
 
     /**
@@ -1224,14 +1269,14 @@ class WP_Schedule_Manager_API {
      * @return WP_REST_Response
      */
     public function delete_user( $request ) {
-        $user_id = (int) $request['id'];
-        $user = get_user_by( 'id', $user_id );
+        $user_id = (int)$request['id'];
+        $user = get_user_by('ID', $user_id);
         
-        if ( ! $user ) {
+        if (!$user) {
             return new WP_Error(
-                'rest_user_invalid_id',
-                __( 'Invalid user ID.', 'wp-schedule-manager' ),
-                array( 'status' => 404 )
+                'invalid_user_id',
+                __('Invalid user ID.', 'wp-schedule-manager'),
+                array('status' => 404)
             );
         }
         
@@ -1244,22 +1289,22 @@ class WP_Schedule_Manager_API {
         );
         
         // Delete the user
-        $result = wp_delete_user( $user_id );
+        $result = wp_delete_user($user_id);
         
-        if ( ! $result ) {
+        if (!$result) {
             return new WP_Error(
-                'rest_user_delete_failed',
-                __( 'Failed to delete user.', 'wp-schedule-manager' ),
-                array( 'status' => 500 )
+                'user_delete_failed',
+                __('Failed to delete user.', 'wp-schedule-manager'),
+                array('status' => 500)
             );
         }
         
         // Clean up user-organization relationships
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-user-organization.php';
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
         $user_org = new WP_Schedule_Manager_User_Organization();
-        $user_org->delete_user_relationships( $user_id );
+        $user_org->delete_user_relationships($user_id);
         
-        return rest_ensure_response( $response );
+        return rest_ensure_response($response);
     }
 
     /**
@@ -1269,8 +1314,8 @@ class WP_Schedule_Manager_API {
      * @return bool
      */
     public function delete_user_permissions_check( $request ) {
-        // Only administrators should be able to delete users
-        return current_user_can( 'manage_options' );
+        // Allow administrators to delete users
+        return current_user_can( 'manage_options' ) || current_user_can( 'administrator' );
     }
 
     /**

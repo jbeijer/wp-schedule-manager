@@ -220,10 +220,13 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  createUser: (data) => apiRequest('/users', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
+  createUser: (data) => {
+    console.log('Creating user with data:', data); // Add logging for debugging
+    return apiRequest('/users', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
 
   /**
    * Update a user
@@ -232,10 +235,13 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  updateUser: (id, data) => apiRequest(`/users/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
+  updateUser: (id, data) => {
+    console.log('Updating user', id, 'with data:', data); // Add logging for debugging
+    return apiRequest(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
 
   /**
    * Delete a user
@@ -243,9 +249,12 @@ export const userApi = {
    * @param {number} id - The user ID
    * @returns {Promise} - The fetch promise
    */
-  deleteUser: (id) => apiRequest(`/users/${id}`, {
-    method: 'DELETE'
-  }),
+  deleteUser: (id) => {
+    console.log('Deleting user:', id); // Add logging for debugging
+    return apiRequest(`/users/${id}`, {
+      method: 'DELETE'
+    });
+  },
 
   /**
    * Get user organizations

@@ -70,13 +70,14 @@ function Users() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Use the real API method from userApi
+      console.log('Fetching users');
       const data = await userApi.getAllUsers();
+      console.log('Users fetched successfully:', data);
       setUsers(data);
       setError(null);
     } catch (err) {
       console.error('Error fetching users:', err);
-      setError('Failed to load users. Please try again.');
+      setError(`Failed to load users. Error: ${err.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -159,10 +160,17 @@ function Users() {
   // Save user (create or update)
   const handleSaveUser = async () => {
     try {
+      setSnackbar({
+        open: true,
+        message: 'Processing...',
+        severity: 'info'
+      });
+      
       if (dialogMode === 'create') {
-        // Use the real API method
+        console.log('Creating user with data:', formData);
         const newUser = await userApi.createUser(formData);
-        // Refresh the users list instead of manually updating it
+        console.log('User created successfully:', newUser);
+        
         await fetchUsers();
         
         setSnackbar({
@@ -171,9 +179,10 @@ function Users() {
           severity: 'success'
         });
       } else {
-        // Use the real API method
+        console.log('Updating user with data:', formData);
         await userApi.updateUser(selectedUser.id, formData);
-        // Refresh the users list
+        console.log('User updated successfully');
+        
         await fetchUsers();
         
         setSnackbar({
@@ -197,10 +206,16 @@ function Users() {
   // Confirm user deletion
   const handleConfirmDelete = async () => {
     try {
-      // Use the real API method
-      await userApi.deleteUser(selectedUser.id);
+      setSnackbar({
+        open: true,
+        message: 'Deleting user...',
+        severity: 'info'
+      });
       
-      // Refresh the users list
+      console.log('Deleting user:', selectedUser.id);
+      await userApi.deleteUser(selectedUser.id);
+      console.log('User deleted successfully');
+      
       await fetchUsers();
       
       setSnackbar({
