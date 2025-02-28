@@ -1211,7 +1211,6 @@ class WP_Schedule_Manager_API {
         
         if (!empty($user_data['display_name'])) {
             $user_args['display_name'] = sanitize_text_field($user_data['display_name']);
-            update_user_meta($user_id, 'nickname', sanitize_text_field($user_data['display_name']));
         }
         
         if (!empty($user_data['user_email'])) {
@@ -1224,10 +1223,6 @@ class WP_Schedule_Manager_API {
         
         if (!empty($user_data['last_name'])) {
             $user_args['last_name'] = sanitize_text_field($user_data['last_name']);
-        }
-        
-        if (!empty($user_data['nickname'])) {
-            $user_args['nickname'] = sanitize_text_field($user_data['nickname']);
         }
         
         $result = wp_update_user($user_args);
@@ -1253,11 +1248,14 @@ class WP_Schedule_Manager_API {
         // Get the updated user
         $updated_user = get_user_by('ID', $user_id);
         
+        // Include first_name and last_name in the response
         $response = array(
             'id'           => $updated_user->ID,
             'user_login'   => $updated_user->user_login,
             'display_name' => $updated_user->display_name,
             'user_email'   => $updated_user->user_email,
+            'first_name'   => get_user_meta($user_id, 'first_name', true),
+            'last_name'    => get_user_meta($user_id, 'last_name', true),
             'role'         => isset($user_data['role']) ? $user_data['role'] : 'base',
         );
         

@@ -239,21 +239,14 @@ export const userApi = {
     console.log('Updating user with ID:', id);
     console.log('Update data:', data);
     
-    // Validate and format role
-    const validRoles = ['bas', 'schemalaggare', 'admin'];
-    const role = validRoles.includes(data.role) ? data.role : 'bas';
-    
     // Format data for API
     const formattedData = {
       display_name: data.display_name || '',
       user_email: data.user_email || '',
-      role: role
+      role: data.role || 'bas',
+      first_name: data.first_name || '',
+      last_name: data.last_name || ''
     };
-    
-    // Add organization_id if provided
-    if (data.organization_id) {
-      formattedData.organization_id = data.organization_id;
-    }
     
     console.log('Formatted update data:', formattedData);
     

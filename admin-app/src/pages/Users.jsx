@@ -23,7 +23,8 @@ import {
   Chip,
   Snackbar,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Grid
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -177,10 +178,28 @@ function Users() {
   // Handle form input change
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    // Update both display_name and the corresponding name part when editing first_name or last_name
+    if (name === 'first_name' || name === 'last_name') {
+      const updatedFormData = {
+        ...formData,
+        [name]: value
+      };
+      
+      // Update display_name based on first_name and last_name
+      if (name === 'first_name') {
+        updatedFormData.display_name = `${value} ${formData.last_name || ''}`.trim();
+      } else {
+        updatedFormData.display_name = `${formData.first_name || ''} ${value}`.trim();
+      }
+      
+      setFormData(updatedFormData);
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   // Save user (create or update)
@@ -369,22 +388,36 @@ function Users() {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1, width: 400, maxWidth: '100%' }}>
-            <TextField
-              fullWidth
-              margin="normal"
-              label="First Name"
-              name="first_name"
-              value={formData.first_name || ''}
-              onChange={handleInputChange}
-            />
-            <TextField
-              fullWidth
-              margin="normal"
-              label="Last Name"
-              name="last_name"
-              value={formData.last_name || ''}
-              onChange={handleInputChange}
-            />
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="First Name"
+                  name="first_name"
+                  value={formData.first_name || ''}
+                  onChange={handleInputChange}
+                  disabled={formLoading}
+                  required
+                  error={formData.first_name.trim() === ''}
+                  helperText={formData.first_name.trim() === '' ? 'First name is required' : ''}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  margin="normal"
+                  label="Last Name"
+                  name="last_name"
+                  value={formData.last_name || ''}
+                  onChange={handleInputChange}
+                  disabled={formLoading}
+                  required
+                  error={formData.last_name.trim() === ''}
+                  helperText={formData.last_name.trim() === '' ? 'Last name is required' : ''}
+                />
+              </Grid>
+            </Grid>
             <TextField
               fullWidth
               margin="normal"
