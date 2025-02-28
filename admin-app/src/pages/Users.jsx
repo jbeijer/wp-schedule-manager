@@ -45,8 +45,7 @@ function Users() {
     user_email: '',
     role: 'bas',
     first_name: '',
-    last_name: '',
-    nickname: ''
+    last_name: ''
   });
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -93,7 +92,7 @@ function Users() {
     if (!hasPermission('create', currentUser.role)) {
       setSnackbar({
         open: true,
-        message: 'You do not have permission to create users',
+        message: 'Du har inte behörighet att skapa användare',
         severity: 'error'
       });
       return;
@@ -104,8 +103,7 @@ function Users() {
       user_email: '',
       role: 'bas',
       first_name: '',
-      last_name: '',
-      nickname: ''
+      last_name: ''
     });
     setOpenDialog(true);
   };
@@ -124,13 +122,25 @@ function Users() {
       setDialogMode('edit');
       setSelectedUser(user);
       
+      let firstName = user.first_name || '';
+      let lastName = user.last_name || '';
+      
+      if ((!firstName || !lastName) && user.display_name) {
+        const nameParts = user.display_name.split(' ');
+        if (nameParts.length > 1) {
+          firstName = firstName || nameParts[0];
+          lastName = lastName || nameParts.slice(1).join(' ');
+        } else {
+          firstName = firstName || user.display_name;
+        }
+      }
+      
       setFormData({
-        display_name: user.display_name || '',
+        display_name: `${firstName} ${lastName}`.trim(),
         user_email: user.user_email || '',
         role: user.role || 'bas',
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        nickname: user.nickname || ''
+        first_name: firstName,
+        last_name: lastName
       });
       
       setSnackbar({
@@ -176,38 +186,27 @@ function Users() {
   };
 
   // Handle form input change
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  const handleInputChange = (name, value) => {
+    const updatedFormData = {
+      ...formData,
+      [name]: value
+    };
     
-    // Update both display_name and the corresponding name part when editing first_name or last_name
     if (name === 'first_name' || name === 'last_name') {
-      const updatedFormData = {
-        ...formData,
-        [name]: value
-      };
-      
-      // Update display_name based on first_name and last_name
-      if (name === 'first_name') {
-        updatedFormData.display_name = `${value} ${formData.last_name || ''}`.trim();
-      } else {
-        updatedFormData.display_name = `${formData.first_name || ''} ${value}`.trim();
-      }
-      
-      setFormData(updatedFormData);
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      const firstName = name === 'first_name' ? value : formData.first_name || '';
+      const lastName = name === 'last_name' ? value : formData.last_name || '';
+      updatedFormData.display_name = `${firstName} ${lastName}`.trim();
     }
+    
+    setFormData(updatedFormData);
   };
 
   // Save user (create or update)
   const handleSaveUser = async () => {
-    if (!formData.display_name.trim() || !formData.user_email.trim()) {
+    if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.user_email.trim()) {
       setSnackbar({
         open: true,
-        message: 'Namn och e-post måste anges',
+        message: 'Förnamn, efternamn och e-post måste anges',
         severity: 'error'
       });
       return;
@@ -223,6 +222,17 @@ function Users() {
       return;
     }
 
+    // Validate role
+    const validRoles = ['bas', 'schemalaggare', 'admin'];
+    if (!validRoles.includes(formData.role)) {
+      setSnackbar({
+        open: true,
+        message: 'Ogiltig roll tilldelad',
+        severity: 'error'
+      });
+      return;
+    }
+
     setFormLoading(true);
     try {
       setSnackbar({
@@ -231,8 +241,17 @@ function Users() {
         severity: 'info'
       });
       
+      // Prepare data to send to the API
+      const userData = {
+        first_name: formData.first_name.trim(),
+        last_name: formData.last_name.trim(),
+        display_name: formData.display_name || `${formData.first_name.trim()} ${formData.last_name.trim()}`,
+        user_email: formData.user_email,
+        role: formData.role
+      };
+      
       if (dialogMode === 'create') {
-        const newUser = await userApi.createUser(formData);
+        const newUser = await userApi.createUser(userData);
         await fetchUsers();
         setSnackbar({
           open: true,
@@ -240,7 +259,7 @@ function Users() {
           severity: 'success'
         });
       } else {
-        await userApi.updateUser(selectedUser.id, formData);
+        await userApi.updateUser(selectedUser.id, userData);
         await fetchUsers();
         setSnackbar({
           open: true,
@@ -389,83 +408,59 @@ function Users() {
         <DialogContent>
           <Box sx={{ pt: 1, width: 400, maxWidth: '100%' }}>
             <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  margin="normal"
-                  label="First Name"
-                  name="first_name"
-                  value={formData.first_name || ''}
-                  onChange={handleInputChange}
-                  disabled={formLoading}
-                  required
-                  error={formData.first_name.trim() === ''}
-                  helperText={formData.first_name.trim() === '' ? 'First name is required' : ''}
+                  label="Förnamn"
+                  value={formData.first_name}
+                  onChange={(e) => {
+                    handleInputChange('first_name', e.target.value);
+                    handleInputChange('display_name', `${e.target.value} ${formData.last_name}`.trim());
+                  }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={6}>
                 <TextField
                   fullWidth
-                  margin="normal"
-                  label="Last Name"
-                  name="last_name"
-                  value={formData.last_name || ''}
-                  onChange={handleInputChange}
-                  disabled={formLoading}
-                  required
-                  error={formData.last_name.trim() === ''}
-                  helperText={formData.last_name.trim() === '' ? 'Last name is required' : ''}
+                  label="Efternamn"
+                  value={formData.last_name}
+                  onChange={(e) => {
+                    handleInputChange('last_name', e.target.value);
+                    handleInputChange('display_name', `${formData.first_name} ${e.target.value}`.trim());
+                  }}
                 />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Visningsnamn"
+                  value={formData.display_name}
+                  InputProps={{ readOnly: true }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="E-post"
+                  value={formData.user_email}
+                  onChange={(e) => handleInputChange('user_email', e.target.value)}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControl fullWidth>
+                  <InputLabel>Roll</InputLabel>
+                  <Select
+                    value={formData.role}
+                    label="Roll"
+                    onChange={(e) => handleInputChange('role', e.target.value)}
+                  >
+                    <MenuItem value="bas">Bas (Anställd)</MenuItem>
+                    <MenuItem value="schemalaggare">Schemaläggare</MenuItem>
+                    <MenuItem value="admin">Admin</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
             </Grid>
-            <TextField
-              fullWidth
-              margin="normal"
-              label="Nickname"
-              name="nickname"
-              value={formData.nickname || ''}
-              onChange={handleInputChange}
-            />
-            <TextField
-              fullWidth
-              margin="normal"
-              label="Namn"
-              name="display_name"
-              value={formData.display_name}
-              onChange={handleInputChange}
-              disabled={formLoading}
-              required
-              error={formData.display_name.trim() === ''}
-              helperText={formData.display_name.trim() === '' ? 'Namn måste anges' : ''}
-            />
-            <TextField
-              fullWidth
-              margin="normal"
-              label="E-post"
-              name="user_email"
-              type="email"
-              value={formData.user_email}
-              onChange={handleInputChange}
-              disabled={formLoading}
-              required
-              error={!formData.user_email.includes('@')}
-              helperText={!formData.user_email.includes('@') ? 'Ange en giltig e-post' : ''}
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel id="role-select-label">Roll</InputLabel>
-              <Select
-                labelId="role-select-label"
-                name="role"
-                value={formData.role}
-                label="Roll"
-                onChange={handleInputChange}
-                disabled={formLoading}
-              >
-                <MenuItem value="bas">Bas (Anställd)</MenuItem>
-                <MenuItem value="schemalaggare">Schemaläggare</MenuItem>
-                <MenuItem value="admin">Admin</MenuItem>
-              </Select>
-            </FormControl>
           </Box>
         </DialogContent>
         <DialogActions>
@@ -474,7 +469,7 @@ function Users() {
             onClick={handleSaveUser} 
             variant="contained" 
             color="primary"
-            disabled={formLoading || !formData.display_name.trim() || !formData.user_email.includes('@')}
+            disabled={formLoading || !formData.first_name.trim() || !formData.last_name.trim() || !formData.user_email.includes('@')}
           >
             {formLoading 
               ? (dialogMode === 'create' ? 'Skapar...' : 'Uppdaterar...') 

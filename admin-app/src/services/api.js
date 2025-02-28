@@ -220,13 +220,16 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  createUser: (data) => {
-    console.log('Creating user with data:', data); // Add logging for debugging
-    return apiRequest('/users', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
-  },
+  createUser: (data) => apiRequest('/users', {
+    method: 'POST',
+    body: JSON.stringify({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      display_name: data.display_name,
+      user_email: data.user_email,
+      role: data.role
+    })
+  }),
 
   /**
    * Update a user
@@ -235,32 +238,16 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  updateUser: (id, data) => {
-    console.log('Updating user with ID:', id);
-    console.log('Update data:', data);
-    
-    // Format data for API
-    const formattedData = {
-      display_name: data.display_name || '',
-      user_email: data.user_email || '',
-      role: data.role || 'bas',
-      first_name: data.first_name || '',
-      last_name: data.last_name || ''
-    };
-    
-    console.log('Formatted update data:', formattedData);
-    
-    return apiRequest(`/users/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(formattedData)
-    }).then(response => {
-      console.log('Update user response:', response);
-      return response;
-    }).catch(error => {
-      console.error('Error updating user:', error);
-      throw error;
-    });
-  },
+  updateUser: (id, data) => apiRequest(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      display_name: data.display_name,
+      user_email: data.user_email,
+      role: data.role
+    })
+  }),
 
   /**
    * Delete a user
