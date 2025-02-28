@@ -258,9 +258,12 @@ export const userApi = {
     }
 
     console.log('Updating user with ID:', id, 'and data:', data);
+    
+    // Make sure we're sending the ID in the data too
     return apiRequest(`/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify({
+        id: id, // Include the ID explicitly
         first_name: data.first_name,
         last_name: data.last_name,
         display_name: data.display_name,

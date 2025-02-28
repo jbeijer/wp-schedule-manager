@@ -1147,16 +1147,18 @@ class WP_Schedule_Manager_API {
      */
     public function update_user($request) {
         $user_id = (int)$request['id'];
+        
+        // Add debugging
+        error_log('Update user API - User ID: ' . $user_id);
+        error_log('Update user API - Request params: ' . print_r($request->get_params(), true));
+        
         $user_data = $this->prepare_user_for_database($request);
 
-        // Add detailed logging
-        error_log('Updating user ID: ' . $user_id . ' with data: ' . print_r($user_data, true));
-
-        // Create the user data array for wp_update_user
+        // Always include the ID in the update data
         $wp_user_data = array(
-            'ID'           => $user_id,
-            'first_name'   => $user_data['first_name'],
-            'last_name'    => $user_data['last_name'],
+            'ID' => $user_id,
+            'first_name' => $user_data['first_name'],
+            'last_name' => $user_data['last_name'],
             'display_name' => $user_data['display_name'],
         );
 
@@ -1260,34 +1262,39 @@ class WP_Schedule_Manager_API {
      */
     protected function prepare_user_for_database( $request ) {
         $user = array();
+        
+        // Get the user ID from the request
+        if (isset($request['id'])) {
+            $user['ID'] = (int)$request['id'];
+        }
 
-        if ( isset( $request['first_name'] ) ) {
-            $first_name = sanitize_text_field( $request['first_name'] );
+        if (isset($request['first_name'])) {
+            $first_name = sanitize_text_field($request['first_name']);
             if (!empty($first_name)) {
                 $user['first_name'] = $first_name;
             }
         }
 
-        if ( isset( $request['last_name'] ) ) {
-            $last_name = sanitize_text_field( $request['last_name'] );
+        if (isset($request['last_name'])) {
+            $last_name = sanitize_text_field($request['last_name']);
             if (!empty($last_name)) {
                 $user['last_name'] = $last_name;
             }
         }
 
-        if ( isset( $request['display_name'] ) ) {
-            $display_name = sanitize_text_field( $request['display_name'] );
+        if (isset($request['display_name'])) {
+            $display_name = sanitize_text_field($request['display_name']);
             if (!empty($display_name)) {
                 $user['display_name'] = $display_name;
             }
         }
 
-        if ( isset( $request['user_email'] ) ) {
-            $user['user_email'] = sanitize_email( $request['user_email'] );
+        if (isset($request['user_email'])) {
+            $user['user_email'] = sanitize_email($request['user_email']);
         }
 
-        if ( isset( $request['role'] ) ) {
-            $user['role'] = sanitize_text_field( $request['role'] );
+        if (isset($request['role'])) {
+            $user['role'] = sanitize_text_field($request['role']);
         }
 
         return $user;
