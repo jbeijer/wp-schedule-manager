@@ -236,10 +236,36 @@ export const userApi = {
    * @returns {Promise} - The fetch promise
    */
   updateUser: (id, data) => {
-    console.log('Updating user', id, 'with data:', data); // Add logging for debugging
+    console.log('Updating user with ID:', id);
+    console.log('Update data:', data);
+    
+    // Validate and format role
+    const validRoles = ['bas', 'schemalaggare', 'admin'];
+    const role = validRoles.includes(data.role) ? data.role : 'bas';
+    
+    // Format data for API
+    const formattedData = {
+      display_name: data.display_name || '',
+      user_email: data.user_email || '',
+      role: role
+    };
+    
+    // Add organization_id if provided
+    if (data.organization_id) {
+      formattedData.organization_id = data.organization_id;
+    }
+    
+    console.log('Formatted update data:', formattedData);
+    
     return apiRequest(`/users/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: JSON.stringify(formattedData)
+    }).then(response => {
+      console.log('Update user response:', response);
+      return response;
+    }).catch(error => {
+      console.error('Error updating user:', error);
+      throw error;
     });
   },
 

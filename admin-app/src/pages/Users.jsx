@@ -51,6 +51,7 @@ function Users() {
     severity: 'success'
   });
   const [currentUser, setCurrentUser] = useState({ role: 'schemalaggare' }); // Mock current user
+  const [formLoading, setFormLoading] = useState(false);
 
   // Add permission utility function
   const hasPermission = (action, currentUserRole, targetUserRole) => {
@@ -104,22 +105,38 @@ function Users() {
 
   // Open dialog to edit a user
   const handleEditUser = (user) => {
-    if (!hasPermission('edit', currentUser.role, user.role)) {
+    try {
       setSnackbar({
         open: true,
-        message: 'You do not have permission to edit this user',
+        message: 'Laddar användardata...',
+        severity: 'info'
+      });
+      
+      console.log('Editing user:', user);
+      
+      setDialogMode('edit');
+      setSelectedUser(user);
+      
+      setFormData({
+        display_name: user.display_name || '',
+        user_email: user.user_email || '',
+        role: user.role || 'bas'
+      });
+      
+      setSnackbar({
+        ...snackbar,
+        open: false
+      });
+      
+      setOpenDialog(true);
+    } catch (err) {
+      console.error('Error preparing edit form:', err);
+      setSnackbar({
+        open: true,
+        message: `Fel vid förberedelse av redigeringsformuläret: ${err.message || 'Okänt fel'}`,
         severity: 'error'
       });
-      return;
     }
-    setDialogMode('edit');
-    setSelectedUser(user);
-    setFormData({
-      display_name: user.display_name,
-      user_email: user.user_email,
-      role: user.role
-    });
-    setOpenDialog(true);
   };
 
   // Open dialog to confirm user deletion
@@ -159,35 +176,47 @@ function Users() {
 
   // Save user (create or update)
   const handleSaveUser = async () => {
+    if (!formData.display_name.trim() || !formData.user_email.trim()) {
+      setSnackbar({
+        open: true,
+        message: 'Namn och e-post måste anges',
+        severity: 'error'
+      });
+      return;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.user_email)) {
+      setSnackbar({
+        open: true,
+        message: 'Ange en giltig e-postadress',
+        severity: 'error'
+      });
+      return;
+    }
+
+    setFormLoading(true);
     try {
       setSnackbar({
         open: true,
-        message: 'Processing...',
+        message: dialogMode === 'create' ? 'Skapar användare...' : 'Uppdaterar användare...',
         severity: 'info'
       });
       
       if (dialogMode === 'create') {
-        console.log('Creating user with data:', formData);
         const newUser = await userApi.createUser(formData);
-        console.log('User created successfully:', newUser);
-        
         await fetchUsers();
-        
         setSnackbar({
           open: true,
-          message: 'User created successfully',
+          message: 'Användare skapad',
           severity: 'success'
         });
       } else {
-        console.log('Updating user with data:', formData);
         await userApi.updateUser(selectedUser.id, formData);
-        console.log('User updated successfully');
-        
         await fetchUsers();
-        
         setSnackbar({
           open: true,
-          message: 'User updated successfully',
+          message: 'Användare uppdaterad',
           severity: 'success'
         });
       }
@@ -197,9 +226,11 @@ function Users() {
       console.error('Error saving user:', err);
       setSnackbar({
         open: true,
-        message: `Error: ${err.message || 'Failed to save user'}`,
+        message: `Fel: ${err.message || 'Kunde inte spara användare'}`,
         severity: 'error'
       });
+    } finally {
+      setFormLoading(false);
     }
   };
 
@@ -325,34 +356,44 @@ function Users() {
       {/* Create/Edit User Dialog */}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>
-          {dialogMode === 'create' ? 'Add User' : 'Edit User'}
+          {dialogMode === 'create' ? 'Lägg till användare' : 'Redigera användare'}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1, width: 400, maxWidth: '100%' }}>
             <TextField
               fullWidth
               margin="normal"
-              label="Name"
+              label="Namn"
               name="display_name"
               value={formData.display_name}
               onChange={handleInputChange}
+              disabled={formLoading}
+              required
+              error={formData.display_name.trim() === ''}
+              helperText={formData.display_name.trim() === '' ? 'Namn måste anges' : ''}
             />
             <TextField
               fullWidth
               margin="normal"
-              label="Email"
+              label="E-post"
               name="user_email"
+              type="email"
               value={formData.user_email}
               onChange={handleInputChange}
+              disabled={formLoading}
+              required
+              error={!formData.user_email.includes('@')}
+              helperText={!formData.user_email.includes('@') ? 'Ange en giltig e-post' : ''}
             />
             <FormControl fullWidth margin="normal">
-              <InputLabel id="role-select-label">Role</InputLabel>
+              <InputLabel id="role-select-label">Roll</InputLabel>
               <Select
                 labelId="role-select-label"
                 name="role"
                 value={formData.role}
-                label="Role"
+                label="Roll"
                 onChange={handleInputChange}
+                disabled={formLoading}
               >
                 <MenuItem value="bas">Bas (Anställd)</MenuItem>
                 <MenuItem value="schemalaggare">Schemaläggare</MenuItem>
@@ -362,9 +403,16 @@ function Users() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button onClick={handleSaveUser} variant="contained" color="primary">
-            {dialogMode === 'create' ? 'Add' : 'Save'}
+          <Button onClick={handleCloseDialog} disabled={formLoading}>Avbryt</Button>
+          <Button 
+            onClick={handleSaveUser} 
+            variant="contained" 
+            color="primary"
+            disabled={formLoading || !formData.display_name.trim() || !formData.user_email.includes('@')}
+          >
+            {formLoading 
+              ? (dialogMode === 'create' ? 'Skapar...' : 'Uppdaterar...') 
+              : (dialogMode === 'create' ? 'Lägg till' : 'Spara')}
           </Button>
         </DialogActions>
       </Dialog>
