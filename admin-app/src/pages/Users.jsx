@@ -413,10 +413,7 @@ function Users() {
                   fullWidth
                   label="Förnamn"
                   value={formData.first_name}
-                  onChange={(e) => {
-                    handleInputChange('first_name', e.target.value);
-                    handleInputChange('display_name', `${e.target.value} ${formData.last_name}`.trim());
-                  }}
+                  onChange={(e) => handleInputChange('first_name', e.target.value)}
                 />
               </Grid>
               <Grid item xs={6}>
@@ -424,10 +421,7 @@ function Users() {
                   fullWidth
                   label="Efternamn"
                   value={formData.last_name}
-                  onChange={(e) => {
-                    handleInputChange('last_name', e.target.value);
-                    handleInputChange('display_name', `${formData.first_name} ${e.target.value}`.trim());
-                  }}
+                  onChange={(e) => handleInputChange('last_name', e.target.value)}
                 />
               </Grid>
               <Grid item xs={12}>

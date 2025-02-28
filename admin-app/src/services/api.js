@@ -220,16 +220,25 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  createUser: (data) => apiRequest('/users', {
-    method: 'POST',
-    body: JSON.stringify({
-      first_name: data.first_name,
-      last_name: data.last_name,
-      display_name: data.display_name,
-      user_email: data.user_email,
-      role: data.role
-    })
-  }),
+  createUser: (data) => {
+    // Validate role
+    const validRoles = ['bas', 'schemaläggare', 'admin'];
+    if (!validRoles.includes(data.role?.toLowerCase())) {
+      throw new Error(`Invalid role: ${data.role}. Must be one of: ${validRoles.join(', ')}`);
+    }
+
+    console.log('Creating user with data:', data);
+    return apiRequest('/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        display_name: data.display_name,
+        user_email: data.user_email,
+        role: data.role.toLowerCase()
+      })
+    });
+  },
 
   /**
    * Update a user
@@ -238,16 +247,28 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  updateUser: (id, data) => apiRequest(`/users/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({
-      first_name: data.first_name,
-      last_name: data.last_name,
-      display_name: data.display_name,
-      user_email: data.user_email,
-      role: data.role
-    })
-  }),
+  updateUser: (id, data) => {
+    // Validate role if provided
+    if (data.role) {
+      const validRoles = ['bas', 'schemaläggare', 'admin'];
+      if (!validRoles.includes(data.role?.toLowerCase())) {
+        throw new Error(`Invalid role: ${data.role}. Must be one of: ${validRoles.join(', ')}`);
+      }
+      data.role = data.role.toLowerCase();
+    }
+
+    console.log('Updating user with ID:', id, 'and data:', data);
+    return apiRequest(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        display_name: data.display_name,
+        user_email: data.user_email,
+        role: data.role
+      })
+    });
+  },
 
   /**
    * Delete a user
@@ -256,9 +277,12 @@ export const userApi = {
    * @returns {Promise} - The fetch promise
    */
   deleteUser: (id) => {
-    console.log('Deleting user:', id); // Add logging for debugging
+    console.log('Deleting user:', id);
     return apiRequest(`/users/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        'X-User-Role-Verification': 'true'
+      }
     });
   },
 

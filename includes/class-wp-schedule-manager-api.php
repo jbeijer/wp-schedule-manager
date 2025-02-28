@@ -1101,26 +1101,30 @@ class WP_Schedule_Manager_API {
      * @param WP_REST_Request $request Full data about the request.
      * @return WP_REST_Response
      */
-    public function create_user( $request ) {
-        $user_data = $this->prepare_user_for_database( $request );
+    public function create_user($request) {
+        $user_data = $this->prepare_user_for_database($request);
+
+        // Add detailed logging
+        error_log('Creating user with data: ' . print_r($user_data, true));
 
         // Create WordPress user
-        $user_id = wp_insert_user( array(
-            'user_login' => $user_data['user_email'],
-            'user_email' => $user_data['user_email'],
-            'first_name' => $user_data['first_name'],
-            'last_name' => $user_data['last_name'],
+        $user_id = wp_insert_user(array(
+            'user_login'   => sanitize_user($user_data['user_email']),
+            'user_email'   => $user_data['user_email'],
+            'first_name'   => $user_data['first_name'],
+            'last_name'    => $user_data['last_name'],
             'display_name' => $user_data['display_name'],
-            'role' => $user_data['role'],
-            'user_pass' => wp_generate_password()
+            'role'         => $user_data['role'],
+            'user_pass'    => wp_generate_password()
         ));
 
-        if ( is_wp_error( $user_id ) ) {
+        if (is_wp_error($user_id)) {
             return $user_id;
         }
 
-        $response = rest_ensure_response( $this->get_user( $request ) );
-        $response->set_status( 201 );
+        // Return the newly created user
+        $response = $this->get_user(new WP_REST_Request('GET', '/wp-schedule-manager/v1/users/' . $user_id));
+        $response->set_status(201);
         return $response;
     }
 
@@ -1143,16 +1147,42 @@ class WP_Schedule_Manager_API {
      */
     public function update_user($request) {
         $user_id = (int)$request['id'];
-        $user_data = $this->prepare_user_for_database( $request );
+        $user_data = $this->prepare_user_for_database($request);
 
-        $user_data['ID'] = $user_id;
-        $updated = wp_update_user( $user_data );
+        // Add detailed logging
+        error_log('Updating user ID: ' . $user_id . ' with data: ' . print_r($user_data, true));
 
-        if ( is_wp_error( $updated ) ) {
+        // Create the user data array for wp_update_user
+        $wp_user_data = array(
+            'ID'           => $user_id,
+            'first_name'   => $user_data['first_name'],
+            'last_name'    => $user_data['last_name'],
+            'display_name' => $user_data['display_name'],
+        );
+
+        // Only update email if it's changed
+        if (isset($user_data['user_email'])) {
+            $wp_user_data['user_email'] = $user_data['user_email'];
+        }
+
+        // Update the WordPress user
+        $updated = wp_update_user($wp_user_data);
+
+        if (is_wp_error($updated)) {
             return $updated;
         }
 
-        return $this->get_user( $request );
+        // Update user role if provided
+        if (isset($user_data['role']) && !empty($user_data['role'])) {
+            $user = get_user_by('ID', $user_id);
+            if ($user) {
+                // Remove existing roles and assign the new one
+                $user->set_role($user_data['role']);
+            }
+        }
+
+        // Return the updated user
+        return $this->get_user(new WP_REST_Request('GET', '/wp-schedule-manager/v1/users/' . $user_id));
     }
 
     /**
@@ -1232,15 +1262,24 @@ class WP_Schedule_Manager_API {
         $user = array();
 
         if ( isset( $request['first_name'] ) ) {
-            $user['first_name'] = sanitize_text_field( $request['first_name'] );
+            $first_name = sanitize_text_field( $request['first_name'] );
+            if (!empty($first_name)) {
+                $user['first_name'] = $first_name;
+            }
         }
 
         if ( isset( $request['last_name'] ) ) {
-            $user['last_name'] = sanitize_text_field( $request['last_name'] );
+            $last_name = sanitize_text_field( $request['last_name'] );
+            if (!empty($last_name)) {
+                $user['last_name'] = $last_name;
+            }
         }
 
         if ( isset( $request['display_name'] ) ) {
-            $user['display_name'] = sanitize_text_field( $request['display_name'] );
+            $display_name = sanitize_text_field( $request['display_name'] );
+            if (!empty($display_name)) {
+                $user['display_name'] = $display_name;
+            }
         }
 
         if ( isset( $request['user_email'] ) ) {
