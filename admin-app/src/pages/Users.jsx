@@ -42,7 +42,10 @@ function Users() {
   const [formData, setFormData] = useState({
     display_name: '',
     user_email: '',
-    role: 'bas'
+    role: 'bas',
+    first_name: '',
+    last_name: '',
+    nickname: ''
   });
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [snackbar, setSnackbar] = useState({
@@ -98,7 +101,10 @@ function Users() {
     setFormData({
       display_name: '',
       user_email: '',
-      role: 'bas'
+      role: 'bas',
+      first_name: '',
+      last_name: '',
+      nickname: ''
     });
     setOpenDialog(true);
   };
@@ -120,7 +126,10 @@ function Users() {
       setFormData({
         display_name: user.display_name || '',
         user_email: user.user_email || '',
-        role: user.role || 'bas'
+        role: user.role || 'bas',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        nickname: user.nickname || ''
       });
       
       setSnackbar({
@@ -360,6 +369,30 @@ function Users() {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1, width: 400, maxWidth: '100%' }}>
+            <TextField
+              fullWidth
+              margin="normal"
+              label="First Name"
+              name="first_name"
+              value={formData.first_name || ''}
+              onChange={handleInputChange}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Last Name"
+              name="last_name"
+              value={formData.last_name || ''}
+              onChange={handleInputChange}
+            />
+            <TextField
+              fullWidth
+              margin="normal"
+              label="Nickname"
+              name="nickname"
+              value={formData.nickname || ''}
+              onChange={handleInputChange}
+            />
             <TextField
               fullWidth
               margin="normal"

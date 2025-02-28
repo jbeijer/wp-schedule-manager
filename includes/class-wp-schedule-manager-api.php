@@ -1181,7 +1181,7 @@ class WP_Schedule_Manager_API {
      * @param WP_REST_Request $request Full data about the request.
      * @return WP_REST_Response
      */
-    public function update_user( $request ) {
+    public function update_user($request) {
         $user_id = (int)$request['id'];
         $user = get_user_by('ID', $user_id);
         
@@ -1211,10 +1211,23 @@ class WP_Schedule_Manager_API {
         
         if (!empty($user_data['display_name'])) {
             $user_args['display_name'] = sanitize_text_field($user_data['display_name']);
+            update_user_meta($user_id, 'nickname', sanitize_text_field($user_data['display_name']));
         }
         
         if (!empty($user_data['user_email'])) {
             $user_args['user_email'] = sanitize_email($user_data['user_email']);
+        }
+        
+        if (!empty($user_data['first_name'])) {
+            $user_args['first_name'] = sanitize_text_field($user_data['first_name']);
+        }
+        
+        if (!empty($user_data['last_name'])) {
+            $user_args['last_name'] = sanitize_text_field($user_data['last_name']);
+        }
+        
+        if (!empty($user_data['nickname'])) {
+            $user_args['nickname'] = sanitize_text_field($user_data['nickname']);
         }
         
         $result = wp_update_user($user_args);
