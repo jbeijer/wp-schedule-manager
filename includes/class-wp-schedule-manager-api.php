@@ -1282,45 +1282,46 @@ class WP_Schedule_Manager_API {
      * @param WP_REST_Request $request Full data about the request.
      * @return WP_REST_Response
      */
-    public function delete_user( $request ) {
-        require_once(ABSPATH . 'wp-admin/includes/user.php');
-        require_once(ABSPATH . 'wp-admin/includes/users.php');
-        $user_id = (int)$request['id'];
-        $user = get_user_by('ID', $user_id);
+    public function delete_user($request) {
+        $user_id = $request->get_param('id');
 
-        if (!$user) {
+        // Check user permissions
+        if (!current_user_can('delete_users')) {
             return new WP_Error(
-                'invalid_user_id',
-                __('Invalid user ID.', 'wp-schedule-manager'),
-                array('status' => 404)
+                'rest_forbidden',
+                __('You do not have permission to delete users.', 'wp-schedule-manager'),
+                array('status' => 403)
             );
         }
 
-        // Get user data before deletion for the response
-        $response = array(
-            'id'           => $user->ID,
-            'user_login'   => $user->user_login,
-            'display_name' => $user->display_name,
-            'user_email'   => $user->user_email,
-        );
+        // Ensure required files are available
+        require_once(ABSPATH . 'wp-admin/includes/user.php');
+        require_once(ABSPATH . 'wp-includes/user.php');
 
-        // Delete the user
+        // Check if function exists
+        if (!function_exists('wp_delete_user')) {
+            return new WP_Error(
+                'function_not_available',
+                __('User deletion function not available.', 'wp-schedule-manager'),
+                array('status' => 500)
+            );
+        }
+
+        // Perform user deletion
         $result = wp_delete_user($user_id);
 
         if (!$result) {
             return new WP_Error(
-                'user_delete_failed',
+                'user_deletion_failed',
                 __('Failed to delete user.', 'wp-schedule-manager'),
                 array('status' => 500)
             );
         }
 
-        // Clean up user-organization relationships
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-user-organization.php';
-        $user_org = new WP_Schedule_Manager_User_Organization();
-        $user_org->delete_user_relationships($user_id);
-
-        return rest_ensure_response($response);
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => __('User successfully deleted.', 'wp-schedule-manager')
+        ));
     }
 
     /**
