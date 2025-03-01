@@ -251,21 +251,25 @@ function Users() {
       };
       
       if (dialogMode === 'create') {
-        const newUser = await userApi.createUser(userData);
-        await fetchUsers();
-        setSnackbar({
-          open: true,
-          message: 'Användare skapad',
-          severity: 'success'
-        });
+        const response = await userApi.createUser(userData);
+        if (response.data) {
+          setSnackbar({
+            open: true,
+            message: 'Användare skapad',
+            severity: 'success'
+          });
+          await fetchUsers();
+        }
       } else {
-        await userApi.updateUser(selectedUser.id, userData);
-        await fetchUsers();
-        setSnackbar({
-          open: true,
-          message: 'Användare uppdaterad',
-          severity: 'success'
-        });
+        const response = await userApi.updateUser(selectedUser.id, userData);
+        if (response.data) {
+          setSnackbar({
+            open: true,
+            message: 'Användare uppdaterad',
+            severity: 'success'
+          });
+          await fetchUsers();
+        }
       }
       
       handleCloseDialog();

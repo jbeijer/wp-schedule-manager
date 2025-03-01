@@ -20,6 +20,7 @@ class WP_Schedule_Manager_DB {
         $organizations_table = $wpdb->prefix . 'schedule_organizations';
         $user_organizations_table = $wpdb->prefix . 'schedule_user_organizations';
         $shifts_table = $wpdb->prefix . 'schedule_shifts';
+        $user_roles_table = $wpdb->prefix . 'schedule_user_roles';
         
         // SQL for creating organizations table
         $organizations_sql = "CREATE TABLE $organizations_table (
@@ -70,6 +71,17 @@ class WP_Schedule_Manager_DB {
             KEY status (status)
         ) $charset_collate;";
         
+        // SQL for creating user roles table
+        $user_roles_sql = "CREATE TABLE $user_roles_table (
+            id bigint(20) NOT NULL AUTO_INCREMENT,
+            user_id bigint(20) NOT NULL,
+            role varchar(50) NOT NULL DEFAULT 'bas',
+            created_at datetime DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY user_id (user_id)
+        ) $charset_collate;";
+        
         // Include WordPress database upgrade functions
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         
@@ -77,5 +89,6 @@ class WP_Schedule_Manager_DB {
         dbDelta($organizations_sql);
         dbDelta($user_organizations_sql);
         dbDelta($shifts_sql);
+        dbDelta($user_roles_sql);
     }
 }

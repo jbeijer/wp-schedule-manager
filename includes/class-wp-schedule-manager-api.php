@@ -1174,12 +1174,29 @@ class WP_Schedule_Manager_API {
             return $updated;
         }
 
-        // Update user role if provided
+        // Handle custom role in separate table
         if (isset($user_data['role']) && !empty($user_data['role'])) {
-            $user = get_user_by('ID', $user_id);
-            if ($user) {
-                // Remove existing roles and assign the new one
-                $user->set_role($user_data['role']);
+            global $wpdb;
+            $table_name = $wpdb->prefix . 'schedule_user_roles';
+            $exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM $table_name WHERE user_id = %d",
+                $user_id
+            ));
+            
+            if ($exists) {
+                $wpdb->update(
+                    $table_name,
+                    array('role' => $user_data['role']),
+                    array('user_id' => $user_id)
+                );
+            } else {
+                $wpdb->insert(
+                    $table_name,
+                    array(
+                        'user_id' => $user_id,
+                        'role' => $user_data['role']
+                    )
+                );
             }
         }
 
