@@ -10,25 +10,35 @@
  * @returns {boolean} - Whether the user can perform the action
  */
 export function canUserPerformAction(action, organizationId = null) {
-  const { userCapabilities } = window.wpScheduleManager || {};
-  
-  if (!userCapabilities) return false;
-  
-  // Om användaren är WordPress-admin
-  if (userCapabilities.isAdmin) return true;
-  
-  // Kontrollera organisations-specifika behörigheter
-  if (organizationId && userCapabilities.organizations) {
-    const orgCaps = userCapabilities.organizations.find(
-      org => org.id === parseInt(organizationId, 10)
-    );
-    if (orgCaps) {
-      return orgCaps[action] === true;
+    const { userCapabilities } = window.wpScheduleManager || {};
+    
+    if (!userCapabilities) return false;
+    
+    // Admin has all permissions
+    if (userCapabilities.isAdmin || userCapabilities.role === 'admin') return true;
+    
+    // Scheduler can manage schedules and shifts
+    if (userCapabilities.role === 'schemalaggare' && 
+        (action === 'viewSchedule' || action === 'manageShift')) {
+        return true;
     }
-  }
-  
-  // Kontrollera globala behörigheter
-  return userCapabilities[action] === true;
+    
+    // Check organization-specific permissions
+    if (organizationId && userCapabilities.organizations) {
+        const orgCaps = userCapabilities.organizations.find(
+            org => org.id === parseInt(organizationId, 10)
+        );
+        if (orgCaps) {
+            return orgCaps[action] === true;
+        }
+    }
+    
+    // Base user can only view schedule and manage own shifts
+    if (userCapabilities.role === 'bas' && action === 'viewSchedule') {
+        return true;
+    }
+    
+    return false;
 }
 
 /**
@@ -38,24 +48,24 @@ export function canUserPerformAction(action, organizationId = null) {
  * @returns {boolean} - Whether the user has the role in any organization
  */
 export function userHasRoleAnywhere(role) {
-  const { userCapabilities } = window.wpScheduleManager || {};
-  
-  if (!userCapabilities) return false;
-  
-  // Om användaren är WordPress-admin
-  if (userCapabilities.isAdmin) return true;
-  
-  // Kontrollera om användaren har rollen i någon organisation
-  if (userCapabilities.organizations) {
-    return userCapabilities.organizations.some(org => {
-      if (role === 'admin') return org.role === 'admin';
-      if (role === 'scheduler') return org.role === 'admin' || org.role === 'scheduler';
-      if (role === 'base') return true; // Alla användare har minst bas-roll
-      return false;
-    });
-  }
-  
-  return false;
+    const { userCapabilities } = window.wpScheduleManager || {};
+    
+    if (!userCapabilities) return false;
+    
+    // Om användaren är WordPress-admin
+    if (userCapabilities.isAdmin) return true;
+    
+    // Kontrollera om användaren har rollen i någon organisation
+    if (userCapabilities.organizations) {
+        return userCapabilities.organizations.some(org => {
+            if (role === 'admin') return org.role === 'admin';
+            if (role === 'scheduler') return org.role === 'admin' || org.role === 'scheduler';
+            if (role === 'base') return true; // Alla användare har minst bas-roll
+            return false;
+        });
+    }
+    
+    return false;
 }
 
 /**
@@ -65,22 +75,22 @@ export function userHasRoleAnywhere(role) {
  * @returns {string|null} - The user's role in the organization, or null if not a member
  */
 export function getUserRoleInOrganization(organizationId) {
-  const { userCapabilities } = window.wpScheduleManager || {};
-  
-  if (!userCapabilities) return null;
-  
-  // Om användaren är WordPress-admin
-  if (userCapabilities.isAdmin) return 'admin';
-  
-  // Hitta användarens roll i organisationen
-  if (userCapabilities.organizations) {
-    const org = userCapabilities.organizations.find(
-      org => org.id === parseInt(organizationId, 10)
-    );
-    if (org) {
-      return org.role;
+    const { userCapabilities } = window.wpScheduleManager || {};
+    
+    if (!userCapabilities) return null;
+    
+    // Om användaren är WordPress-admin
+    if (userCapabilities.isAdmin) return 'admin';
+    
+    // Hitta användarens roll i organisationen
+    if (userCapabilities.organizations) {
+        const org = userCapabilities.organizations.find(
+            org => org.id === parseInt(organizationId, 10)
+        );
+        if (org) {
+            return org.role;
+        }
     }
-  }
-  
-  return null;
+    
+    return null;
 }

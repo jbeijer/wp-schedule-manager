@@ -183,6 +183,14 @@ class WP_Schedule_Manager_API {
                 'methods'             => WP_REST_Server::EDITABLE,
                 'callback'            => array( $this, 'update_user' ),
                 'permission_callback' => array( $this, 'update_user_permissions_check' ),
+                'args'                => array(
+                    'role' => array(
+                        'required'          => false,
+                        'validate_callback' => function($param) {
+                            return in_array($param, ['bas', 'schemaläggare', 'admin']);
+                        }
+                    )
+                )
             ),
             array(
                 'methods'             => WP_REST_Server::DELETABLE,
@@ -197,6 +205,23 @@ class WP_Schedule_Manager_API {
                 'callback'            => array( $this, 'get_user_permissions' ),
                 'permission_callback' => array( $this, 'get_user_permissions_check' ),
             ),
+        ));
+
+        // Add role update endpoint
+        register_rest_route($namespace, '/users/(?P<id>\d+)/role', array(
+            array(
+                'methods' => 'PUT',
+                'callback' => array($this, 'update_user_role'),
+                'permission_callback' => array($this, 'update_user_permissions_check'),
+                'args' => array(
+                    'role' => array(
+                        'required' => true,
+                        'validate_callback' => function($param) {
+                            return in_array($param, ['bas', 'schemaläggare', 'admin']);
+                        }
+                    )
+                )
+            )
         ));
     }
 
@@ -1041,46 +1066,30 @@ class WP_Schedule_Manager_API {
      */
     public function get_user( $request ) {
         $user_id = (int) $request['id'];
-        $user = get_user_by( 'id', $user_id );
-        
-        if ( ! $user ) {
+        $user = get_user_by('id', $user_id);
+
+        if (!$user) {
             return new WP_Error(
                 'rest_user_invalid_id',
-                __( 'Invalid user ID.', 'wp-schedule-manager' ),
-                array( 'status' => 404 )
+                __('Invalid user ID.', 'wp-schedule-manager'),
+                array('status' => 404)
             );
         }
-        
-        // Get the User Organization instance
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-user-organization.php';
-        $user_org = new WP_Schedule_Manager_User_Organization();
-        
-        // Get user organizations and roles
-        $user_orgs = $user_org->get_user_organizations( $user_id );
-        
-        // Get the highest role across all organizations
-        $highest_role = 'member'; // Default
-        
-        foreach ( $user_orgs as $org ) {
-            if ( $org->role === 'admin' ) {
-                $highest_role = 'admin';
-                break;
-            } elseif ( $org->role === 'manager' && $highest_role !== 'admin' ) {
-                $highest_role = 'manager';
-            }
-        }
-        
-        // Add user to response
+
+        // Get plugin role
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
+        $plugin_role = WP_Schedule_Manager_Role::get_user_role($user_id);
+
         $response = array(
             'id'           => $user->ID,
             'user_login'   => $user->user_login,
             'display_name' => $user->display_name,
             'user_email'   => $user->user_email,
-            'role'         => $highest_role,
-            'organizations' => count($user_orgs),
+            'role'         => $plugin_role,
+            'wp_role'      => $user->roles[0]
         );
-        
-        return rest_ensure_response( $response );
+
+        return rest_ensure_response($response);
     }
 
     /**
@@ -1104,9 +1113,6 @@ class WP_Schedule_Manager_API {
     public function create_user($request) {
         $user_data = $this->prepare_user_for_database($request);
 
-        // Add detailed logging
-        error_log('Creating user with data: ' . print_r($user_data, true));
-
         // Create WordPress user
         $user_id = wp_insert_user(array(
             'user_login'   => sanitize_user($user_data['user_email']),
@@ -1114,12 +1120,18 @@ class WP_Schedule_Manager_API {
             'first_name'   => $user_data['first_name'],
             'last_name'    => $user_data['last_name'],
             'display_name' => $user_data['display_name'],
-            'role'         => $user_data['role'],
+            'role'         => 'schedule_user',
             'user_pass'    => wp_generate_password()
         ));
 
         if (is_wp_error($user_id)) {
             return $user_id;
+        }
+
+        // Set plugin role if specified
+        if (isset($user_data['role'])) {
+            require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
+            WP_Schedule_Manager_Role::set_user_role($user_id, $user_data['role']);
         }
 
         // Return the newly created user
@@ -1154,7 +1166,7 @@ class WP_Schedule_Manager_API {
         
         $user_data = $this->prepare_user_for_database($request);
 
-        // Always include the ID in the update data
+        // Update WordPress user data (excluding role)
         $wp_user_data = array(
             'ID' => $user_id,
             'first_name' => $user_data['first_name'],
@@ -1174,22 +1186,26 @@ class WP_Schedule_Manager_API {
             return $updated;
         }
 
-        // Handle custom role in separate table
+        // Handle plugin-specific role in custom table
         if (isset($user_data['role']) && !empty($user_data['role'])) {
             global $wpdb;
             $table_name = $wpdb->prefix . 'schedule_user_roles';
+            
+            // Check if role exists for user
             $exists = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM $table_name WHERE user_id = %d",
                 $user_id
             ));
             
             if ($exists) {
+                // Update existing role
                 $wpdb->update(
                     $table_name,
                     array('role' => $user_data['role']),
                     array('user_id' => $user_id)
                 );
             } else {
+                // Insert new role
                 $wpdb->insert(
                     $table_name,
                     array(
@@ -1279,7 +1295,7 @@ class WP_Schedule_Manager_API {
      */
     protected function prepare_user_for_database( $request ) {
         $user = array();
-        
+
         // Get the user ID from the request
         if (isset($request['id'])) {
             $user['ID'] = (int)$request['id'];
@@ -1346,5 +1362,32 @@ class WP_Schedule_Manager_API {
         require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/models/class-wp-schedule-manager-user-organization.php';
         $user_org = new WP_Schedule_Manager_User_Organization();
         return $user_org->get_user_organizations($user_id);
+    }
+
+    /**
+     * Update a user's role
+     */
+    public function update_user_role($request) {
+        $user_id = (int)$request['id'];
+        $role = $request['role'];
+
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
+        $result = WP_Schedule_Manager_Role::set_user_role($user_id, $role);
+
+        if ($result === false) {
+            return new WP_Error(
+                'rest_role_update_failed',
+                __('Failed to update user role.', 'wp-schedule-manager'),
+                array('status' => 500)
+            );
+        }
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'data' => array(
+                'user_id' => $user_id,
+                'role' => $role
+            )
+        ));
     }
 }

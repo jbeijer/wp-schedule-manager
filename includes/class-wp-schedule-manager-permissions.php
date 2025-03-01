@@ -116,13 +116,16 @@ class WP_Schedule_Manager_Permissions {
      * @return   bool                         True if the user can create shifts, false otherwise.
      */
     public function can_create_shifts($user_id, $organization_id) {
-        // WordPress administrators can create shifts in all organizations
         if (user_can($user_id, 'administrator')) {
             return true;
         }
         
-        // Schedulers and admins can create shifts
-        return $this->user_organization->user_has_role($user_id, $organization_id, 'scheduler');
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
+        if (WP_Schedule_Manager_Role::user_has_role($user_id, WP_Schedule_Manager_Role::ROLE_SCHEDULER)) {
+            return $this->user_organization->is_member($user_id, $organization_id);
+        }
+        
+        return false;
     }
 
     /**
@@ -412,26 +415,30 @@ class WP_Schedule_Manager_Permissions {
      * @return   array                 The user capabilities.
      */
     public function get_user_capabilities($user_id) {
+        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
+        $user_role = WP_Schedule_Manager_Role::get_user_role($user_id);
+
         $capabilities = array(
             'isAdmin' => user_can($user_id, 'administrator'),
+            'role' => $user_role,
             'viewSchedule' => user_can($user_id, 'view_schedule'),
             'manageOwnShifts' => user_can($user_id, 'manage_own_shifts'),
-            'manageAllShifts' => user_can($user_id, 'manage_all_shifts'),
-            'manageResources' => user_can($user_id, 'manage_resources'),
+            'manageAllShifts' => user_can($user_id, 'manage_all_shifts') || $user_role === 'schemalaggare' || $user_role === 'admin',
+            'manageResources' => user_can($user_id, 'manage_resources') || $user_role === 'admin',
             'organizations' => array()
         );
         
-        // Lägg till organisations-specifika behörigheter
         $user_orgs = $this->user_organization->get_user_organizations($user_id);
         foreach ($user_orgs as $user_org) {
             $org_caps = array(
                 'id' => $user_org->organization_id,
                 'name' => $user_org->organization_name,
                 'role' => $user_org->role,
-                'viewSchedule' => true, // Alla medlemmar kan se schemat
-                'bookShift' => true,    // Alla medlemmar kan boka egna pass
-                'manageShift' => $user_org->role === 'scheduler' || $user_org->role === 'admin',
-                'manageResources' => $user_org->role === 'admin'
+                'viewSchedule' => true,
+                'bookShift' => true,
+                'manageShift' => $user_org->role === 'scheduler' || $user_org->role === 'admin' || 
+                                 $user_role === 'schemalaggare' || $user_role === 'admin',
+                'manageResources' => $user_org->role === 'admin' || $user_role === 'admin'
             );
             
             $capabilities['organizations'][] = $org_caps;

@@ -79,7 +79,8 @@ class WP_Schedule_Manager_DB {
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
-            UNIQUE KEY user_id (user_id)
+            UNIQUE KEY user_id (user_id),
+            FOREIGN KEY (user_id) REFERENCES {$wpdb->prefix}users(ID) ON DELETE CASCADE
         ) $charset_collate;";
         
         // Include WordPress database upgrade functions

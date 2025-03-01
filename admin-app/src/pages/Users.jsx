@@ -59,7 +59,7 @@ function Users() {
   // Add permission utility function
   const hasPermission = (action, currentUserRole, targetUserRole) => {
     if (currentUserRole === 'admin') return true;
-    if (currentUserRole === 'schemalaggare') {
+    if (currentUserRole === 'schemaläggare') {
       return action !== 'delete' && targetUserRole === 'bas';
     }
     return false;
@@ -233,15 +233,9 @@ function Users() {
       return;
     }
 
-    setFormLoading(true);
     try {
-      setSnackbar({
-        open: true,
-        message: dialogMode === 'create' ? 'Skapar användare...' : 'Uppdaterar användare...',
-        severity: 'info'
-      });
-      
-      // Prepare data to send to the API
+      setFormLoading(true);
+
       const userData = {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
@@ -249,27 +243,21 @@ function Users() {
         user_email: formData.user_email,
         role: formData.role
       };
-      
-      if (dialogMode === 'create') {
-        const response = await userApi.createUser(userData);
-        if (response.data) {
-          setSnackbar({
-            open: true,
-            message: 'Användare skapad',
-            severity: 'success'
-          });
-          await fetchUsers();
-        }
-      } else {
-        const response = await userApi.updateUser(selectedUser.id, userData);
-        if (response.data) {
-          setSnackbar({
-            open: true,
-            message: 'Användare uppdaterad',
-            severity: 'success'
-          });
-          await fetchUsers();
-        }
+
+      const endpoint = dialogMode === 'create' 
+        ? '/wp-json/wp-schedule-manager/v1/users'
+        : `/wp-json/wp-schedule-manager/v1/users/${formData.ID}`;
+
+      const method = dialogMode === 'create' ? 'POST' : 'PUT';
+
+      const response = await userApi.request(endpoint, method, userData);
+      if (response.data) {
+        setSnackbar({
+          open: true,
+          message: dialogMode === 'create' ? 'Användare skapad' : 'Användare uppdaterad',
+          severity: 'success'
+        });
+        await fetchUsers();
       }
       
       handleCloseDialog();
@@ -334,6 +322,21 @@ function Users() {
       default:
         return 'default';
     }
+  };
+
+  // Role options for the select input
+  const roleOptions = [
+    { value: 'bas', label: 'Bas (Anställd)' },
+    { value: 'schemaläggare', label: 'Schemaläggare' },
+    { value: 'admin', label: 'Admin' }
+  ];
+
+  // Handle role change
+  const handleRoleChange = (selectedOption) => {
+    setFormData(prev => ({
+      ...prev,
+      role: selectedOption.value
+    }));
   };
 
   return (
@@ -448,13 +451,14 @@ function Users() {
                 <FormControl fullWidth>
                   <InputLabel>Roll</InputLabel>
                   <Select
-                    value={formData.role}
+                    value={roleOptions.find(option => option.value === formData.role)}
                     label="Roll"
-                    onChange={(e) => handleInputChange('role', e.target.value)}
+                    onChange={(e) => handleRoleChange(e.target.value)}
+                    isClearable={false}
                   >
-                    <MenuItem value="bas">Bas (Anställd)</MenuItem>
-                    <MenuItem value="schemalaggare">Schemaläggare</MenuItem>
-                    <MenuItem value="admin">Admin</MenuItem>
+                    {roleOptions.map(option => (
+                      <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>

@@ -323,7 +323,45 @@ export const userApi = {
    */
   removeUserFromOrganization: (userId, organizationId) => apiRequest(`/users-organizations/${userId}/${organizationId}`, {
     method: 'DELETE'
-  })
+  }),
+
+  /**
+   * Get user capabilities
+   * 
+   * @returns {Promise} - The fetch promise
+   */
+  getUserCapabilities: async () => {
+    try {
+      const response = await fetch(`${API_URL}/capabilities`);
+      return response.json();
+    } catch (error) {
+      console.error('Error fetching user capabilities:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update user role
+   * 
+   * @param {number} userId - The user ID
+   * @param {string} role - The role
+   * @returns {Promise} - The fetch promise
+   */
+  updateUserRole: async (userId, role) => {
+    try {
+      const response = await fetch(`${API_URL}/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ role })
+      });
+      return response.json();
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  }
 };
 
 export default {
