@@ -53,21 +53,37 @@ function Users() {
     message: '',
     severity: 'success'
   });
-  const [currentUser, setCurrentUser] = useState({ role: 'schemalaggare' }); // Mock current user
+  const [currentUser, setCurrentUser] = useState({ role: 'admin' }); // Mock current user
   const [formLoading, setFormLoading] = useState(false);
 
   // Add permission utility function
-  const hasPermission = (action, currentUserRole, targetUserRole) => {
+  const hasPermission = (action, currentUserRole, targetUserRole = 'bas') => {
+    console.log(`Checking permission for action: ${action}, current role: ${currentUserRole}, target role: ${targetUserRole}`);
+    
+    // Admin has full permissions
     if (currentUserRole === 'admin') return true;
+    
+    // Schemaläggare can create Bas users
     if (currentUserRole === 'schemaläggare') {
-      return action !== 'delete' && targetUserRole === 'bas';
+        return action === 'create' && targetUserRole === 'bas';
     }
+    
+    // Bas users have no user management permissions
     return false;
   };
 
   // Fetch users on component mount
   useEffect(() => {
     fetchUsers();
+    
+    // Get current user role from WordPress
+    if (window.wpScheduleManager && window.wpScheduleManager.userCapabilities) {
+        console.log('Fetched user capabilities:', window.wpScheduleManager.userCapabilities);
+        setCurrentUser({ 
+            role: window.wpScheduleManager.userCapabilities.role,
+            capabilities: window.wpScheduleManager.userCapabilities
+        });
+    }
   }, []);
 
   // Fetch users from API
@@ -89,13 +105,16 @@ function Users() {
 
   // Open dialog to create a new user
   const handleCreateUser = () => {
+    console.log('Current user role:', currentUser.role);
+    console.log('Permission check result:', hasPermission('create', currentUser.role));
+    
     if (!hasPermission('create', currentUser.role)) {
-      setSnackbar({
-        open: true,
-        message: 'Du har inte behörighet att skapa användare',
-        severity: 'error'
-      });
-      return;
+        setSnackbar({
+            open: true,
+            message: 'Du har inte behörighet att skapa användare',
+            severity: 'error'
+        });
+        return;
     }
     setDialogMode('create');
     setFormData({
@@ -203,7 +222,8 @@ function Users() {
 
   // Save user (create or update)
   const handleSaveUser = async () => {
-    if (!formData.first_name.trim() || !formData.last_name.trim() || !formData.user_email.trim()) {
+    // Validate required fields
+    if (!formData.first_name?.trim() || !formData.last_name?.trim() || !formData.user_email?.trim()) {
       setSnackbar({
         open: true,
         message: 'Förnamn, efternamn och e-post måste anges',
@@ -211,7 +231,8 @@ function Users() {
       });
       return;
     }
-    
+
+    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.user_email)) {
       setSnackbar({
@@ -222,50 +243,46 @@ function Users() {
       return;
     }
 
-    // Validate role
-    const validRoles = ['bas', 'schemalaggare', 'admin'];
-    if (!validRoles.includes(formData.role)) {
-      setSnackbar({
-        open: true,
-        message: 'Ogiltig roll tilldelad',
-        severity: 'error'
-      });
-      return;
-    }
-
     try {
       setFormLoading(true);
-
+      
+      // Prepare user data
       const userData = {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         display_name: formData.display_name || `${formData.first_name.trim()} ${formData.last_name.trim()}`,
         user_email: formData.user_email,
-        role: formData.role
+        role: formData.role || 'bas' // Default to 'bas' role
       };
 
-      const endpoint = dialogMode === 'create' 
-        ? '/wp-json/wp-schedule-manager/v1/users'
-        : `/wp-json/wp-schedule-manager/v1/users/${formData.ID}`;
+      // Make API request
+      const response = await fetch(`${window.wpScheduleManager.apiUrl}/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-WP-Nonce': window.wpScheduleManager.nonce
+        },
+        body: JSON.stringify(userData)
+      });
 
-      const method = dialogMode === 'create' ? 'POST' : 'PUT';
-
-      const response = await userApi.request(endpoint, method, userData);
-      if (response.data) {
-        setSnackbar({
-          open: true,
-          message: dialogMode === 'create' ? 'Användare skapad' : 'Användare uppdaterad',
-          severity: 'success'
-        });
-        await fetchUsers();
-      }
+      const result = await response.json();
       
-      handleCloseDialog();
-    } catch (err) {
-      console.error('Error saving user:', err);
+      if (!response.ok) {
+        throw new Error(result.message || 'Kunde inte skapa användare');
+      }
+
       setSnackbar({
         open: true,
-        message: `Fel: ${err.message || 'Kunde inte spara användare'}`,
+        message: 'Användaren skapades framgångsrikt',
+        severity: 'success'
+      });
+      
+      await fetchUsers();
+      handleCloseDialog();
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: `Fel: ${err.message}`,
         severity: 'error'
       });
     } finally {

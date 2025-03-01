@@ -1111,30 +1111,64 @@ class WP_Schedule_Manager_API {
      * @return WP_REST_Response
      */
     public function create_user($request) {
-        $user_data = $this->prepare_user_for_database($request);
+        // Verify permissions
+        if (!current_user_can('create_users')) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('Du har inte behörighet att skapa användare'),
+                array('status' => 403)
+            );
+        }
+
+        $user_data = $request->get_params();
+
+        // Validate required fields
+        if (empty($user_data['first_name']) || empty($user_data['last_name']) || empty($user_data['user_email'])) {
+            return new WP_Error(
+                'missing_fields',
+                __('Förnamn, efternamn och e-post måste anges'),
+                array('status' => 400)
+            );
+        }
+
+        // Validate email
+        if (!is_email($user_data['user_email'])) {
+            return new WP_Error(
+                'invalid_email',
+                __('Ange en giltig e-postadress'),
+                array('status' => 400)
+            );
+        }
 
         // Create WordPress user
         $user_id = wp_insert_user(array(
-            'user_login'   => sanitize_user($user_data['user_email']),
-            'user_email'   => $user_data['user_email'],
-            'first_name'   => $user_data['first_name'],
-            'last_name'    => $user_data['last_name'],
-            'display_name' => $user_data['display_name'],
-            'role'         => 'schedule_user',
-            'user_pass'    => wp_generate_password()
+            'user_login' => sanitize_user($user_data['user_email']),
+            'user_email' => sanitize_email($user_data['user_email']),
+            'first_name' => sanitize_text_field($user_data['first_name']),
+            'last_name' => sanitize_text_field($user_data['last_name']),
+            'display_name' => sanitize_text_field($user_data['display_name'] ?? ''),
+            'role' => 'subscriber', // Default WordPress role
+            'user_pass' => wp_generate_password()
         ));
 
         if (is_wp_error($user_id)) {
-            return $user_id;
+            return new WP_Error(
+                'user_creation_failed',
+                $user_id->get_error_message(),
+                array('status' => 400)
+            );
         }
 
-        // Set plugin role if specified
-        if (isset($user_data['role'])) {
+        // Set custom role if specified
+        if (!empty($user_data['role'])) {
             require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
-            WP_Schedule_Manager_Role::set_user_role($user_id, $user_data['role']);
+            WP_Schedule_Manager_Role::set_user_role($user_id, sanitize_text_field($user_data['role']));
         }
 
-        // Return the newly created user
+        // Send notification email
+        wp_new_user_notification($user_id, null, 'user');
+
+        // Return created user
         $response = $this->get_user(new WP_REST_Request('GET', '/wp-schedule-manager/v1/users/' . $user_id));
         $response->set_status(201);
         return $response;
@@ -1147,8 +1181,20 @@ class WP_Schedule_Manager_API {
      * @return bool
      */
     public function create_user_permissions_check( $request ) {
-        // Allow administrators to create users
-        return current_user_can( 'manage_options' ) || current_user_can( 'administrator' );
+        $current_user = wp_get_current_user();
+        
+        // Admin can create any user
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+        
+        // Schemaläggare can only create Bas users
+        if (in_array('schemaläggare', $current_user->roles)) {
+            $target_role = $request->get_param('role');
+            return $target_role === 'bas';
+        }
+        
+        return false;
     }
 
     /**
