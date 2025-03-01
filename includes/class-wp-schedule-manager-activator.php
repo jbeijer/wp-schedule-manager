@@ -36,6 +36,9 @@ class WP_Schedule_Manager_Activator {
         // Create sample organization
         self::create_sample_organization();
         
+        // Ensure WordPress administrators have full access in the plugin
+        self::ensure_admin_access();
+        
         // Set version
         update_option('wp_schedule_manager_version', WP_SCHEDULE_MANAGER_VERSION);
     }
@@ -107,5 +110,74 @@ class WP_Schedule_Manager_Activator {
             
             wp_insert_post($post_data);
         }
+    }
+    
+    /**
+     * Ensure WordPress administrators have full access in the plugin
+     * 
+     * @since    1.0.0
+     */
+    private static function ensure_admin_access() {
+        // Include the Role class if it hasn't been included yet
+        if (!class_exists('WP_Schedule_Manager_Role')) {
+            require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-wp-schedule-manager-role.php';
+        }
+        
+        try {
+            // Sync WordPress administrators to have admin role in the plugin
+            WP_Schedule_Manager_Role::sync_wordpress_admins();
+            
+            // Add all WordPress administrators to all organizations
+            self::add_admins_to_organizations();
+        } catch (Exception $e) {
+            error_log('WP Schedule Manager: Error ensuring admin access - ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Add WordPress administrators to all organizations with admin role
+     * 
+     * @since    1.0.0
+     */
+    private static function add_admins_to_organizations() {
+        global $wpdb;
+        
+        // Get all WordPress administrators
+        $admin_users = get_users([
+            'role' => 'administrator',
+            'fields' => ['ID']
+        ]);
+        
+        if (empty($admin_users)) {
+            return;
+        }
+        
+        // Get all organizations from the database
+        $organizations = $wpdb->get_results("SELECT id FROM {$wpdb->prefix}schedule_organizations");
+        
+        if (empty($organizations)) {
+            return;
+        }
+        
+        // Prepare bulk insert data
+        $bulk_data = [];
+        $table_name = $wpdb->prefix . 'schedule_user_organizations';
+        
+        foreach ($admin_users as $admin) {
+            foreach ($organizations as $org) {
+                $bulk_data[] = [
+                    'user_id' => $admin->ID,
+                    'organization_id' => $org->id,
+                    'role' => 'admin'
+                ];
+            }
+        }
+        
+        // Perform bulk insert
+        $wpdb->query("INSERT IGNORE INTO $table_name (user_id, organization_id, role) VALUES " . 
+            implode(',', array_map(function($data) {
+                return "({$data['user_id']}, {$data['organization_id']}, '{$data['role']}')";
+            }, $bulk_data))
+        );
     }
 }

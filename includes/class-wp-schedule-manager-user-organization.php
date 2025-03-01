@@ -29,6 +29,17 @@ class WP_Schedule_Manager_User_Organization {
     }
     
     /**
+     * Check if user is a WordPress administrator.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id    The user ID.
+     * @return   bool                  True if the user is a WordPress admin, false otherwise.
+     */
+    private function is_wordpress_admin($user_id) {
+        return user_can($user_id, 'administrator');
+    }
+
+    /**
      * Get user-organization relationships for a specific user.
      *
      * @since    1.0.0
@@ -46,11 +57,26 @@ class WP_Schedule_Manager_User_Organization {
             return array();
         }
         
+        // If user is a WordPress admin, get all organizations and assign admin role
+        if ($this->is_wordpress_admin($user_id)) {
+            $orgs = $wpdb->get_results(
+                "SELECT o.id as organization_id, o.name as organization_name, 
+                 o.description as organization_description, o.parent_id,
+                 'admin' as role
+                 FROM {$wpdb->prefix}schedule_organizations o"
+            );
+            
+            if (!empty($orgs)) {
+                return $orgs;
+            }
+        }
+        
+        // Regular query for non-admins or as fallback if no orgs found above
         $results = $wpdb->get_results($wpdb->prepare(
-            "SELECT uo.*, o.name as organization_name 
-             FROM $table_name uo
-             JOIN {$wpdb->prefix}schedule_organizations o ON uo.organization_id = o.id
-             WHERE uo.user_id = %d",
+            "SELECT uo.*, o.name as organization_name, o.description as organization_description, o.parent_id
+            FROM $table_name uo
+            JOIN {$wpdb->prefix}schedule_organizations o ON uo.organization_id = o.id
+            WHERE uo.user_id = %d",
             $user_id
         ));
         
@@ -92,7 +118,7 @@ class WP_Schedule_Manager_User_Organization {
      * @since    1.0.0
      * @param    int       $user_id           The user ID.
      * @param    int       $organization_id    The organization ID.
-     * @return   string    The user's role or null if not found.
+     * @return   string|null                   The user's role or null if not found.
      */
     public function get_user_role($user_id, $organization_id) {
         global $wpdb;
@@ -105,6 +131,12 @@ class WP_Schedule_Manager_User_Organization {
             return null;
         }
         
+        // WordPress administrators always have admin role in all organizations
+        if ($this->is_wordpress_admin($user_id)) {
+            return 'admin';
+        }
+        
+        // For regular users, check the database
         $result = $wpdb->get_var($wpdb->prepare(
             "SELECT role FROM $table_name WHERE user_id = %d AND organization_id = %d",
             $user_id,
@@ -121,12 +153,39 @@ class WP_Schedule_Manager_User_Organization {
      * @param    int       $user_id           The user ID.
      * @param    int       $organization_id    The organization ID.
      * @param    string    $role              The role to check.
-     * @return   bool      True if the user has the role, false otherwise.
+     * @return   bool                         True if the user has the role, false otherwise.
      */
     public function user_has_role($user_id, $organization_id, $role) {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'schedule_user_organizations';
+        
+        // Check if the table exists
+        if ($wpdb->get_var("SHOW TABLES LIKE '$table_name'") != $table_name) {
+            // Table doesn't exist, return false
+            return false;
+        }
+        
+        // WordPress administrators always have admin role everywhere
+        if ($this->is_wordpress_admin($user_id)) {
+            return true;
+        }
+        
         $user_role = $this->get_user_role($user_id, $organization_id);
         
-        return $user_role === $role;
+        if (!$user_role) {
+            return false;
+        }
+        
+        // Define role hierarchy
+        $role_hierarchy = array(
+            'base' => 1,
+            'scheduler' => 2,
+            'admin' => 3
+        );
+        
+        // Check if user's role is equal or higher in hierarchy
+        return $role_hierarchy[$user_role] >= $role_hierarchy[$role];
     }
     
     /**

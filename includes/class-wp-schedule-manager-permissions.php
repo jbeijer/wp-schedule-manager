@@ -44,7 +44,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_view_organization($user_id, $organization_id) {
         // WordPress administrators can view all organizations
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -74,7 +74,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_edit_organization($user_id, $organization_id) {
         // WordPress administrators can edit all organizations
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -116,7 +116,7 @@ class WP_Schedule_Manager_Permissions {
      * @return   bool                         True if the user can create shifts, false otherwise.
      */
     public function can_create_shifts($user_id, $organization_id) {
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -137,7 +137,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_view_admin($user_id) {
         // WordPress administrators can always view admin
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -161,7 +161,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function get_highest_role($user_id) {
         // WordPress administrators are treated as having admin role
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return 'admin';
         }
         
@@ -245,7 +245,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function user_can_create_organization($user_id) {
         // WordPress administrators can create organizations
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -265,7 +265,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_view_schedule($user_id, $organization_id) {
         // WordPress-administratörer kan alltid se scheman
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -288,7 +288,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_book_shift($user_id, $shift) {
         // WordPress-administratörer kan alltid boka pass
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -323,7 +323,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_manage_shifts($user_id, $organization_id) {
         // WordPress-administratörer kan alltid hantera pass
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -347,7 +347,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_manage_resources($user_id, $organization_id) {
         // WordPress-administratörer kan alltid hantera resurser
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -369,7 +369,7 @@ class WP_Schedule_Manager_Permissions {
      * @return   bool                  True if the user has scheduler role anywhere, false otherwise.
      */
     public function user_has_scheduler_role_anywhere($user_id) {
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -392,7 +392,7 @@ class WP_Schedule_Manager_Permissions {
      * @return   bool                  True if the user has admin role anywhere, false otherwise.
      */
     public function user_has_admin_role_anywhere($user_id) {
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
@@ -408,6 +408,17 @@ class WP_Schedule_Manager_Permissions {
     }
     
     /**
+     * Check if user is a WordPress administrator.
+     *
+     * @since    1.0.0
+     * @param    int       $user_id    The user ID.
+     * @return   bool                  True if the user is a WordPress admin, false otherwise.
+     */
+    private function is_wordpress_admin($user_id) {
+        return user_can($user_id, 'administrator');
+    }
+
+    /**
      * Get all user capabilities for the React app.
      *
      * @since    1.0.0
@@ -416,34 +427,49 @@ class WP_Schedule_Manager_Permissions {
      */
     public function get_user_capabilities($user_id) {
         require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
-        $user_role = WP_Schedule_Manager_Role::get_user_role($user_id);
+        $is_wp_admin = $this->is_wordpress_admin($user_id);
 
         $capabilities = array(
-            'isAdmin' => user_can($user_id, 'administrator'),
-            'role' => $user_role,
-            'viewSchedule' => user_can($user_id, 'view_schedule'),
-            'manageOwnShifts' => user_can($user_id, 'manage_own_shifts'),
-            'manageAllShifts' => user_can($user_id, 'manage_all_shifts') || $user_role === 'schemalaggare' || $user_role === 'admin',
-            'manageResources' => user_can($user_id, 'manage_resources') || $user_role === 'admin',
+            'isAdmin' => $is_wp_admin,
+            'role' => $is_wp_admin ? 'admin' : WP_Schedule_Manager_Role::get_user_role($user_id),
+            'viewSchedule' => $is_wp_admin || user_can($user_id, 'view_schedule'),
+            'manageOwnShifts' => $is_wp_admin || user_can($user_id, 'manage_own_shifts'),
+            'manageAllShifts' => $is_wp_admin || user_can($user_id, 'manage_all_shifts'),
+            'manageResources' => $is_wp_admin || user_can($user_id, 'manage_resources'),
             'organizations' => array()
         );
         
-        $user_orgs = $this->user_organization->get_user_organizations($user_id);
-        foreach ($user_orgs as $user_org) {
-            $org_caps = array(
-                'id' => $user_org->organization_id,
-                'name' => $user_org->organization_name,
-                'role' => $user_org->role,
-                'viewSchedule' => true,
-                'bookShift' => true,
-                'manageShift' => $user_org->role === 'scheduler' || $user_org->role === 'admin' || 
-                                 $user_role === 'schemalaggare' || $user_role === 'admin',
-                'manageResources' => $user_org->role === 'admin' || $user_role === 'admin'
-            );
-            
-            $capabilities['organizations'][] = $org_caps;
+        // For WordPress admins, if they're not part of any organizations yet,
+        // we'll still need to add organizations they have access to
+        if ($is_wp_admin) {
+            // Get all organizations
+            $all_orgs = $this->organization->all();
+            foreach ($all_orgs as $org) {
+                $capabilities['organizations'][] = array(
+                    'id' => $org->id,
+                    'name' => $org->name,
+                    'role' => 'admin',
+                    'viewSchedule' => true,
+                    'bookShift' => true,
+                    'manageShift' => true,
+                    'manageResources' => true
+                );
+            }
+        } else {
+            $user_orgs = $this->user_organization->get_user_organizations($user_id);
+            foreach ($user_orgs as $user_org) {
+                $capabilities['organizations'][] = array(
+                    'id' => $user_org->organization_id,
+                    'name' => $user_org->organization_name,
+                    'role' => $user_org->role,
+                    'viewSchedule' => true,
+                    'bookShift' => true,
+                    'manageShift' => $user_org->role === 'scheduler' || $user_org->role === 'admin',
+                    'manageResources' => $user_org->role === 'admin'
+                );
+            }
         }
-        
+
         return $capabilities;
     }
     
@@ -457,7 +483,7 @@ class WP_Schedule_Manager_Permissions {
      */
     public function can_edit_shift($user_id, $shift) {
         // WordPress-administratörer kan alltid redigera pass
-        if (user_can($user_id, 'administrator')) {
+        if ($this->is_wordpress_admin($user_id)) {
             return true;
         }
         
