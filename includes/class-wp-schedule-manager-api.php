@@ -170,6 +170,14 @@ class WP_Schedule_Manager_API {
                 'methods'             => WP_REST_Server::CREATABLE,
                 'callback'            => array( $this, 'create_user' ),
                 'permission_callback' => array( $this, 'create_user_permissions_check' ),
+                'args'                => array(
+                    'role' => array(
+                        'required'          => false,
+                        'validate_callback' => function($param) {
+                            return in_array($param, ['bas', 'schemaläggare', 'admin']);
+                        }
+                    )
+                )
             ),
         ));
 
@@ -1147,7 +1155,7 @@ class WP_Schedule_Manager_API {
             'first_name' => sanitize_text_field($user_data['first_name']),
             'last_name' => sanitize_text_field($user_data['last_name']),
             'display_name' => sanitize_text_field($user_data['display_name'] ?? ''),
-            'role' => 'subscriber', // Default WordPress role
+            'role' => 'schedule_user', // Default WordPress role
             'user_pass' => wp_generate_password()
         ));
 
@@ -1169,7 +1177,15 @@ class WP_Schedule_Manager_API {
         wp_new_user_notification($user_id, null, 'user');
 
         // Return created user
-        $response = $this->get_user(new WP_REST_Request('GET', '/wp-schedule-manager/v1/users/' . $user_id));
+        $get_request = new WP_REST_Request('GET', '/wp-schedule-manager/v1/users/' . $user_id);
+        $response = $this->get_user($get_request);
+
+        // Check if response is an error
+        if (is_wp_error($response)) {
+            return $response; // Return the error as is
+        }
+
+        // If successful, set the status code to 201 Created
         return rest_ensure_response($response)->set_status(201);
     }
 
@@ -1434,7 +1450,8 @@ class WP_Schedule_Manager_API {
             'success' => true,
             'data' => array(
                 'user_id' => $user_id,
-                'role' => $role
+                'role' => $role,
+                'wp_role' => WP_Schedule_Manager_Role::map_plugin_role_to_wp_role($role)
             )
         ));
     }

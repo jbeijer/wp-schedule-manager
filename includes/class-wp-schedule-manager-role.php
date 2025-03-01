@@ -6,7 +6,7 @@ class WP_Schedule_Manager_Role {
     
     // Define roles
     const ROLE_BASE = 'bas';
-    const ROLE_SCHEDULER = 'schemalaggare';
+    const ROLE_SCHEDULER = 'schemaläggare';
     const ROLE_ADMIN = 'admin';
 
     /**
@@ -64,6 +64,14 @@ class WP_Schedule_Manager_Role {
             WP_Schedule_Manager_DB::create_tables();
         }
         
+        // Set the WordPress role
+        $wp_role = self::map_plugin_role_to_wp_role($role);
+        $user = get_user_by('id', $user_id);
+        if ($user) {
+            $user->set_role($wp_role);
+        }
+        
+        // Set the plugin role
         $existing_role = $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT id FROM $table_name WHERE user_id = %d",
@@ -130,5 +138,18 @@ class WP_Schedule_Manager_Role {
         }
         
         return count($admin_users);
+    }
+
+    /**
+     * Map plugin roles to WordPress roles.
+     */
+    public static function map_plugin_role_to_wp_role($plugin_role) {
+        $role_mapping = array(
+            self::ROLE_BASE => 'schedule_user',       // Base users get schedule_user role
+            self::ROLE_SCHEDULER => 'schedule_user',  // Schedulers get schedule_user role
+            self::ROLE_ADMIN => 'administrator'       // Admins get administrator role
+        );
+        
+        return isset($role_mapping[$plugin_role]) ? $role_mapping[$plugin_role] : 'schedule_user';
     }
 }
