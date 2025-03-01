@@ -1155,7 +1155,7 @@ class WP_Schedule_Manager_API {
             return new WP_Error(
                 'user_creation_failed',
                 $user_id->get_error_message(),
-                array('status' => 400)
+                array('status' => 422)
             );
         }
 
@@ -1170,8 +1170,7 @@ class WP_Schedule_Manager_API {
 
         // Return created user
         $response = $this->get_user(new WP_REST_Request('GET', '/wp-schedule-manager/v1/users/' . $user_id));
-        $response->set_status(201);
-        return $response;
+        return rest_ensure_response($response)->set_status(201);
     }
 
     /**
@@ -1284,6 +1283,8 @@ class WP_Schedule_Manager_API {
      * @return WP_REST_Response
      */
     public function delete_user( $request ) {
+        require_once(ABSPATH . 'wp-admin/includes/user.php');
+        require_once(ABSPATH . 'wp-admin/includes/users.php');
         $user_id = (int)$request['id'];
         $user = get_user_by('ID', $user_id);
 

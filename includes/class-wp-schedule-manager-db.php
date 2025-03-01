@@ -75,12 +75,12 @@ class WP_Schedule_Manager_DB {
         $user_roles_sql = "CREATE TABLE $user_roles_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             user_id bigint(20) NOT NULL,
-            role varchar(50) NOT NULL DEFAULT 'bas',
+            role varchar(50) NOT NULL DEFAULT 'base',
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             updated_at datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             UNIQUE KEY user_id (user_id),
-            FOREIGN KEY (user_id) REFERENCES {$wpdb->prefix}users(ID) ON DELETE CASCADE
+            CONSTRAINT fk_user_id FOREIGN KEY (user_id) REFERENCES $wpdb->users (ID) ON DELETE CASCADE
         ) $charset_collate;";
         
         // Include WordPress database upgrade functions
