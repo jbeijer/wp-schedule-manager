@@ -24,7 +24,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { Delete as DeleteIcon } from '@mui/icons-material';
-import { userApi } from '../services/api';
+import { userApi, organizationApi } from '../services/api';
 
 function UserOrganizationsManager({ userId }) {
   const [organizations, setOrganizations] = useState([]);
@@ -62,7 +62,7 @@ function UserOrganizationsManager({ userId }) {
   // Fetch all organizations
   const fetchOrganizations = async () => {
     try {
-      const data = await userApi.getAllOrganizations();
+      const data = await organizationApi.getAll();
       setOrganizations(data);
     } catch (err) {
       console.error('Error fetching organizations:', err);

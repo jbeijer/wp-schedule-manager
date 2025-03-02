@@ -249,6 +249,15 @@ class WP_Schedule_Manager_API {
                 )
             )
         ));
+
+        // Register capabilities endpoint
+        register_rest_route( $namespace, '/capabilities', array(
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => array( $this, 'get_user_capabilities' ),
+                'permission_callback' => '__return_true', // All logged in users can check their capabilities
+            ),
+        ));
     }
 
     /**
@@ -1651,5 +1660,47 @@ class WP_Schedule_Manager_API {
         // Use permissions class to check if user can update roles
         $permissions = new WP_Schedule_Manager_Permissions();
         return $permissions->user_can_update_roles_in_organization($organization_id);
+    }
+
+    /**
+     * Get current user's capabilities
+     *
+     * @param WP_REST_Request $request Full data about the request.
+     * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+     */
+    public function get_user_capabilities($request) {
+        $current_user = wp_get_current_user();
+        if (!$current_user || !$current_user->ID) {
+            return new WP_Error('not_logged_in', 'User must be logged in', array('status' => 401));
+        }
+
+        // Get user's role in each organization
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'schedule_manager_user_organizations';
+        $organizations = $wpdb->get_results($wpdb->prepare(
+            "SELECT organization_id, role FROM $table_name WHERE user_id = %d",
+            $current_user->ID
+        ));
+
+        $capabilities = array(
+            'user_id' => $current_user->ID,
+            'organizations' => array(),
+            'global_role' => $current_user->roles[0] ?? 'subscriber'
+        );
+
+        foreach ($organizations as $org) {
+            $capabilities['organizations'][$org->organization_id] = array(
+                'role' => $org->role,
+                'permissions' => array(
+                    'view' => true,
+                    'create' => in_array($org->role, array('schemaläggare', 'admin')),
+                    'edit' => in_array($org->role, array('schemaläggare', 'admin')),
+                    'delete' => $org->role === 'admin',
+                    'manage_users' => $org->role === 'admin'
+                )
+            );
+        }
+
+        return rest_ensure_response($capabilities);
     }
 }

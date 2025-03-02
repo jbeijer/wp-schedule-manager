@@ -6,6 +6,26 @@
 const API_URL = window.wpScheduleManager?.apiUrl || '/wp-json/wp-schedule-manager/v1';
 const NONCE = window.wpScheduleManager?.nonce || '';
 
+// Role verification helper
+const verifyRole = (requiredRole, currentRole) => {
+  const roleHierarchy = ['bas', 'schemaläggare', 'admin'];
+  const currentIndex = roleHierarchy.indexOf(currentRole);
+  const requiredIndex = roleHierarchy.indexOf(requiredRole);
+  return currentIndex >= requiredIndex;
+};
+
+// Permission check helper
+const checkPermission = (permission, userCapabilities) => {
+  if (!userCapabilities || !userCapabilities.organizations) {
+    return false;
+  }
+
+  // Check if user has permission in any organization
+  return Object.values(userCapabilities.organizations).some(org => 
+    org.permissions && org.permissions[permission] === true
+  );
+};
+
 /**
  * Make a request to the API
  * 
@@ -56,7 +76,11 @@ export const organizationApi = {
    * @param {number} options.parent_id - Filter organizations by parent ID
    * @returns {Promise} - The fetch promise
    */
-  getAll: (options = {}) => {
+  getAll: async (options = {}) => {
+    const capabilities = await userApi.getUserCapabilities();
+    if (!checkPermission('read_organizations', capabilities)) {
+      throw new Error('Insufficient permissions to view organizations');
+    }
     let endpoint = '/organizations';
     const params = new URLSearchParams();
     
@@ -106,10 +130,16 @@ export const organizationApi = {
    * @param {Object} data - The organization data
    * @returns {Promise} - The fetch promise
    */
-  create: (data) => apiRequest('/organizations', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
+  create: async (data) => {
+    const capabilities = await userApi.getUserCapabilities();
+    if (!checkPermission('create_organizations', capabilities)) {
+      throw new Error('Insufficient permissions to create organizations');
+    }
+    return apiRequest('/organizations', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
 
   /**
    * Update an organization
@@ -118,10 +148,12 @@ export const organizationApi = {
    * @param {Object} data - The organization data
    * @returns {Promise} - The fetch promise
    */
-  update: (id, data) => apiRequest(`/organizations/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
+  update: (id, data) => {
+    return apiRequest(`/organizations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
 
   /**
    * Delete an organization
@@ -129,9 +161,11 @@ export const organizationApi = {
    * @param {number} id - The organization ID
    * @returns {Promise} - The fetch promise
    */
-  delete: (id) => apiRequest(`/organizations/${id}`, {
-    method: 'DELETE'
-  })
+  delete: (id) => {
+    return apiRequest(`/organizations/${id}`, {
+      method: 'DELETE'
+    });
+  }
 };
 
 /**
@@ -155,7 +189,9 @@ export const shiftApi = {
    * @param {number} id - The shift ID
    * @returns {Promise} - The fetch promise
    */
-  getById: (id) => apiRequest(`/shifts/${id}`),
+  getById: (id) => {
+    return apiRequest(`/shifts/${id}`);
+  },
 
   /**
    * Create a new shift
@@ -163,10 +199,12 @@ export const shiftApi = {
    * @param {Object} data - The shift data
    * @returns {Promise} - The fetch promise
    */
-  create: (data) => apiRequest('/shifts', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
+  create: (data) => {
+    return apiRequest('/shifts', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
 
   /**
    * Update a shift
@@ -175,10 +213,12 @@ export const shiftApi = {
    * @param {Object} data - The shift data
    * @returns {Promise} - The fetch promise
    */
-  update: (id, data) => apiRequest(`/shifts/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
-  }),
+  update: (id, data) => {
+    return apiRequest(`/shifts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+  },
 
   /**
    * Delete a shift
@@ -186,9 +226,11 @@ export const shiftApi = {
    * @param {number} id - The shift ID
    * @returns {Promise} - The fetch promise
    */
-  delete: (id) => apiRequest(`/shifts/${id}`, {
-    method: 'DELETE'
-  })
+  delete: (id) => {
+    return apiRequest(`/shifts/${id}`, {
+      method: 'DELETE'
+    });
+  }
 };
 
 /**
@@ -212,7 +254,9 @@ export const userApi = {
    * @param {number} id - The user ID
    * @returns {Promise} - The fetch promise
    */
-  getUser: (id) => apiRequest(`/users/${id}`),
+  getUser: (id) => {
+    return apiRequest(`/users/${id}`);
+  },
 
   /**
    * Create a new user
@@ -220,7 +264,11 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  createUser: (data) => {
+  createUser: async (data) => {
+    const capabilities = await userApi.getUserCapabilities();
+    if (!checkPermission('create_users', capabilities)) {
+      throw new Error('Insufficient permissions to create users');
+    }
     // Validate role
     const validRoles = ['bas', 'schemaläggare', 'admin'];
     if (!validRoles.includes(data.role?.toLowerCase())) {
@@ -247,7 +295,7 @@ export const userApi = {
    * @param {Object} data - The user data
    * @returns {Promise} - The fetch promise
    */
-  updateUser: (id, data) => {
+  updateUser: async (id, data) => {
     // Validate role if provided
     if (data.role) {
       const validRoles = ['bas', 'schemaläggare', 'admin'];
@@ -295,7 +343,9 @@ export const userApi = {
    * @param {number} id - The user ID
    * @returns {Promise} - The fetch promise
    */
-  getUserOrganizations: (id) => apiRequest(`/users/${id}/organizations`),
+  getUserOrganizations: (id) => {
+    return apiRequest(`/users/${id}/organizations`);
+  },
 
   /**
    * Add a user to an organization
@@ -305,14 +355,16 @@ export const userApi = {
    * @param {string} role - The role (bas, schemaläggare, admin)
    * @returns {Promise} - The fetch promise
    */
-  addUserToOrganization: (userId, organizationId, role) => apiRequest('/users-organizations', {
-    method: 'POST',
-    body: JSON.stringify({
-      user_id: userId,
-      organization_id: organizationId,
-      role
-    })
-  }),
+  addUserToOrganization: (userId, organizationId, role) => {
+    return apiRequest('/users-organizations', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: userId,
+        organization_id: organizationId,
+        role
+      })
+    });
+  },
 
   /**
    * Remove a user from an organization
@@ -321,9 +373,11 @@ export const userApi = {
    * @param {number} organizationId - The organization ID
    * @returns {Promise} - The fetch promise
    */
-  removeUserFromOrganization: (userId, organizationId) => apiRequest(`/users/${userId}/organizations/${organizationId}`, {
-    method: 'DELETE'
-  }),
+  removeUserFromOrganization: (userId, organizationId) => {
+    return apiRequest(`/users/${userId}/organizations/${organizationId}`, {
+      method: 'DELETE'
+    });
+  },
 
   /**
    * Update user's role in an organization
@@ -333,10 +387,12 @@ export const userApi = {
    * @param {string} role - The new role (bas, schemaläggare, admin)
    * @returns {Promise} - The fetch promise
    */
-  updateUserOrganizationRole: (userId, organizationId, role) => apiRequest(`/users/${userId}/organizations/${organizationId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ role })
-  }),
+  updateUserOrganizationRole: (userId, organizationId, role) => {
+    return apiRequest(`/users/${userId}/organizations/${organizationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role })
+    });
+  },
 
   /**
    * Get user capabilities
@@ -361,6 +417,10 @@ export const userApi = {
    * @returns {Promise} - The fetch promise
    */
   updateUserRole: async (userId, role) => {
+    const capabilities = await userApi.getUserCapabilities();
+    if (!checkPermission('manage_roles', capabilities)) {
+      throw new Error('Insufficient permissions to manage roles');
+    }
     try {
       const response = await fetch(`${API_URL}/users/${userId}/role`, {
         method: 'PUT',
