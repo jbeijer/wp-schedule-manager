@@ -237,6 +237,37 @@ class WP_Schedule_Manager_Permissions {
     }
 
     /**
+     * Check if a user can view organizations for another user.
+     *
+     * @since    1.0.0
+     * @param    int       $target_user_id    The user ID to view organizations for.
+     * @return   bool                         True if the user can view organizations, false otherwise.
+     */
+    public function user_can_view_organizations_for_user($target_user_id) {
+        $current_user_id = get_current_user_id();
+        
+        // Users can view their own organizations
+        if ($current_user_id == $target_user_id) {
+            return true;
+        }
+        
+        // WordPress administrators can view all
+        if ($this->is_wordpress_admin($current_user_id)) {
+            return true;
+        }
+        
+        // Check if current user is an admin in any organization the target user belongs to
+        $target_user_orgs = $this->user_organization->get_user_organizations($target_user_id);
+        foreach ($target_user_orgs as $org) {
+            if ($this->user_organization->user_has_role($current_user_id, $org->organization_id, 'admin')) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
      * Check if a user can create an organization.
      *
      * @since    1.0.0
@@ -253,6 +284,53 @@ class WP_Schedule_Manager_Permissions {
         
         // By default, only administrators can create organizations
         return false;
+    }
+
+    /**
+     * Check if a user can add users to an organization.
+     *
+     * @since    1.0.0
+     * @param    int       $organization_id    The organization ID.
+     * @return   bool                         True if the user can add users, false otherwise.
+     */
+    public function user_can_add_to_organization($organization_id) {
+        $current_user_id = get_current_user_id();
+        
+        // WordPress administrators can add users
+        if ($this->is_wordpress_admin($current_user_id)) {
+            return true;
+        }
+        
+        // Organization admins can add users
+        if ($this->user_organization->user_has_role($current_user_id, $organization_id, 'admin')) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if a user can remove users from an organization.
+     *
+     * @since    1.0.0
+     * @param    int       $organization_id    The organization ID.
+     * @return   bool                         True if the user can remove users, false otherwise.
+     */
+    public function user_can_remove_from_organization($organization_id) {
+        // Same permissions as adding users
+        return $this->user_can_add_to_organization($organization_id);
+    }
+
+    /**
+     * Check if user can update roles in an organization.
+     *
+     * @since    1.0.0
+     * @param    int       $organization_id    The organization ID.
+     * @return   bool                         True if the user can update roles, false otherwise.
+     */
+    public function user_can_update_roles_in_organization($organization_id) {
+        // Same permissions as adding users
+        return $this->user_can_add_to_organization($organization_id);
     }
 
     /**

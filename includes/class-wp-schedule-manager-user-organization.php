@@ -271,6 +271,13 @@ class WP_Schedule_Manager_User_Organization {
             array('%d')
         );
         
+        if ($result !== false) {
+            $user_org = $this->get($id);
+            if ($user_org) {
+                $this->update_user_capabilities($user_org->user_id);
+            }
+        }
+        
         return $result !== false;
     }
     
@@ -297,6 +304,13 @@ class WP_Schedule_Manager_User_Organization {
             array('%d')
         );
         
+        if ($result !== false) {
+            $user_org = $this->get($id);
+            if ($user_org) {
+                $this->update_user_capabilities($user_org->user_id);
+            }
+        }
+        
         return $result !== false;
     }
     
@@ -322,6 +336,10 @@ class WP_Schedule_Manager_User_Organization {
             array('user_id' => $user_id),
             array('%d')
         );
+        
+        if ($result !== false) {
+            $this->update_user_capabilities($user_id);
+        }
         
         return $result !== false;
     }
@@ -350,5 +368,43 @@ class WP_Schedule_Manager_User_Organization {
         );
         
         return $result !== false;
+    }
+    
+    /**
+     * Uppdatera användarens behörigheter efter ändringar i organisationstillhörighet
+     */
+    private function update_user_capabilities($user_id) {
+        // Kanske kan använda WP-rollen för att reflektera användarens högsta roll i systemet
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-wp-schedule-manager-role.php';
+
+        $user_orgs = $this->get_user_organizations($user_id);
+        $highest_role = 'base'; // Standardroll
+
+        // Definiera rollhierarki
+        $role_hierarchy = array(
+            'base' => 1,
+            'scheduler' => 2,
+            'admin' => 3
+        );
+
+        $highest_level = 0;
+
+        // Hitta användarens högsta roll över alla organisationer
+        foreach ($user_orgs as $user_org) {
+            $role_level = $role_hierarchy[$user_org->role];
+            if ($role_level > $highest_level) {
+                $highest_level = $role_level;
+                $highest_role = $user_org->role;
+            }
+        }
+
+        // Uppdatera användarens globala roll
+        WP_Schedule_Manager_Role::set_user_role($user_id, $highest_role);
+
+        // Uppdatera metadata för snabb åtkomst (valfritt)
+        update_user_meta($user_id, 'schedule_manager_role', $highest_role);
+
+        // Rensa alla transients relaterade till användarens behörigheter (om du använder caching)
+        delete_transient('schedule_manager_user_' . $user_id . '_capabilities');
     }
 }

@@ -32,6 +32,7 @@ import {
   Delete as DeleteIcon
 } from '@mui/icons-material';
 import { userApi } from '../services/api';
+import UserOrganizationsManager from '../components/UserOrganizationsManager';
 
 function Users() {
   const [users, setUsers] = useState([]);
@@ -40,6 +41,7 @@ function Users() {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMode, setDialogMode] = useState('create'); // 'create' or 'edit'
   const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedUserForOrg, setSelectedUserForOrg] = useState(null);
   const [formData, setFormData] = useState({
     display_name: '',
     user_email: '',
@@ -356,72 +358,105 @@ function Users() {
     }));
   };
 
+  // Handle clicking on a user's organizations
+  const handleManageOrganizations = (user) => {
+    setSelectedUserForOrg(user);
+  };
+
   return (
     <Box>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4">Users</Typography>
+        <Typography variant="h5">Användare</Typography>
         <Button
           variant="contained"
           color="primary"
           startIcon={<AddIcon />}
           onClick={handleCreateUser}
         >
-          Add User
+          Lägg till användare
         </Button>
       </Box>
 
       {loading ? (
-        <Box display="flex" justifyContent="center" p={4}>
+        <Box display="flex" justifyContent="center" p={3}>
           <CircularProgress />
         </Box>
       ) : error ? (
-        <Alert severity="error" sx={{ my: 2 }}>
-          {error}
-        </Alert>
+        <Alert severity="error">{error}</Alert>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.display_name}</TableCell>
-                  <TableCell>{user.user_email}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={user.role}
-                      color={getRoleColor(user.role)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      color="primary"
-                      onClick={() => handleEditUser(user)}
-                      size="small"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      color="error"
-                      onClick={() => handleDeleteUser(user)}
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={selectedUserForOrg ? 6 : 12}>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Namn</TableCell>
+                    <TableCell>E-post</TableCell>
+                    <TableCell>Roll</TableCell>
+                    <TableCell>Åtgärder</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.display_name}</TableCell>
+                      <TableCell>{user.user_email}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={user.role} 
+                          color={
+                            user.role === 'admin' 
+                              ? 'error' 
+                              : user.role === 'schemaläggare' 
+                                ? 'primary' 
+                                : 'default'
+                          }
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton
+                          color="primary"
+                          onClick={() => handleEditUser(user)}
+                          disabled={!hasPermission('edit', currentUser.role, user.role)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          color="secondary"
+                          onClick={() => handleDeleteUser(user)}
+                          disabled={!hasPermission('delete', currentUser.role, user.role)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                        <Button
+                          size="small"
+                          onClick={() => handleManageOrganizations(user)}
+                        >
+                          Organisationer
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Grid>
+          
+          {selectedUserForOrg && (
+            <Grid item xs={12} md={6}>
+              <Box mb={2} display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="h6">
+                  Organisationer för {selectedUserForOrg.display_name}
+                </Typography>
+                <IconButton onClick={() => setSelectedUserForOrg(null)} size="small">
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+              <UserOrganizationsManager userId={selectedUserForOrg.id} />
+            </Grid>
+          )}
+        </Grid>
       )}
 
       {/* Create/Edit User Dialog */}

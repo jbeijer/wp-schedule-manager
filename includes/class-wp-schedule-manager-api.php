@@ -127,6 +127,29 @@ class WP_Schedule_Manager_API {
             ),
         ));
 
+        // Add new endpoint for specific user's organizations
+        register_rest_route( $namespace, '/users/(?P<id>\d+)/organizations', array(
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => array( $this, 'get_user_organizations' ),
+                'permission_callback' => array( $this, 'get_user_organizations_permissions_check' ),
+            ),
+        ));
+
+        // Add endpoint for managing specific user-organization relationship
+        register_rest_route( $namespace, '/users/(?P<user_id>\d+)/organizations/(?P<organization_id>\d+)', array(
+            array(
+                'methods'             => WP_REST_Server::DELETABLE,
+                'callback'            => array( $this, 'remove_user_from_organization' ),
+                'permission_callback' => array( $this, 'remove_user_from_organization_permissions_check' ),
+            ),
+            array(
+                'methods'             => WP_REST_Server::EDITABLE,
+                'callback'            => array( $this, 'update_user_organization_role' ),
+                'permission_callback' => array( $this, 'update_user_organization_role_permissions_check' ),
+            ),
+        ));
+
         // Register shifts endpoints
         register_rest_route( $namespace, '/shifts', array(
             array(
@@ -1454,5 +1477,220 @@ class WP_Schedule_Manager_API {
                 'wp_role' => WP_Schedule_Manager_Role::map_plugin_role_to_wp_role($role)
             )
         ));
+    }
+
+    /**
+     * Kontrollera behörighet för att visa användarorganisationer
+     */
+    public function check_user_organizations_permission($request) {
+        $current_user_id = get_current_user_id();
+        $user_id = $request['id'];
+
+        // Användaren kan se sin egen information
+        if ($current_user_id == $user_id) {
+            return true;
+        }
+
+        // Admins kan se alla
+        if (current_user_can('administrator')) {
+            return true;
+        }
+
+        // Behörighetskontroll via permissions-klassen
+        $permissions = new WP_Schedule_Manager_Permissions();
+        return $permissions->user_can_view_organizations_for_user($user_id);
+    }
+
+    /**
+     * Kontrollera behörighet för att lägga till en användare i en organisation
+     */
+    public function check_add_user_organization_permission($request) {
+        return current_user_can('administrator');
+    }
+
+    /**
+     * Kontrollera behörighet för att ta bort en användare från en organisation
+     */
+    public function check_remove_user_organization_permission($request) {
+        return current_user_can('administrator');
+    }
+
+    /**
+     * Kontrollera behörighet för att uppdatera en användares roll i en organisation
+     */
+    public function check_update_user_organization_permission($request) {
+        return current_user_can('administrator');
+    }
+
+    /**
+     * Get organizations for a specific user
+     */
+    public function get_user_organizations($request) {
+        $user_id = $request['id'];
+        
+        // Create instance of User Organization model
+        $user_organization = new WP_Schedule_Manager_User_Organization();
+        
+        // Get user's organizations
+        $organizations = $user_organization->get_user_organizations($user_id);
+        
+        return rest_ensure_response($organizations);
+    }
+
+    /**
+     * Check if user has permission to view organizations for a user
+     */
+    public function get_user_organizations_permissions_check($request) {
+        $current_user_id = get_current_user_id();
+        $user_id = $request['id'];
+        
+        // Users can see their own organizations
+        if ($current_user_id == $user_id) {
+            return true;
+        }
+        
+        // Admins can see all
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        // Use permissions class to check if user can view organizations
+        $permissions = new WP_Schedule_Manager_Permissions();
+        return $permissions->user_can_view_organizations_for_user($user_id);
+    }
+
+    /**
+     * Add user to organization
+     */
+    public function create_user_organization($request) {
+        $params = $request->get_params();
+        
+        // Validate input
+        if (!isset($params['user_id']) || !isset($params['organization_id']) || !isset($params['role'])) {
+            return new WP_Error('missing_parameters', 'Missing required parameters', array('status' => 400));
+        }
+        
+        // Create instance of User Organization model
+        $user_organization = new WP_Schedule_Manager_User_Organization();
+        
+        // Try to add user to organization
+        $result = $user_organization->add_user_to_organization(
+            $params['user_id'],
+            $params['organization_id'],
+            $params['role']
+        );
+        
+        if (!$result) {
+            return new WP_Error('failed_to_add', 'Failed to add user to organization', array('status' => 500));
+        }
+        
+        // Get updated data to return
+        $updated_orgs = $user_organization->get_user_organizations($params['user_id']);
+        
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'User added to organization successfully',
+            'organizations' => $updated_orgs
+        ));
+    }
+
+    /**
+     * Check if user has permission to add user to organization
+     */
+    public function create_user_organization_permissions_check($request) {
+        $params = $request->get_params();
+        
+        // Admins can add users to organizations
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        // Use permissions class to check if user can add to organization
+        $permissions = new WP_Schedule_Manager_Permissions();
+        return $permissions->user_can_add_to_organization($params['organization_id']);
+    }
+
+    /**
+     * Remove user from organization
+     */
+    public function remove_user_from_organization($request) {
+        $user_id = $request['user_id'];
+        $organization_id = $request['organization_id'];
+        
+        // Create instance of User Organization model
+        $user_organization = new WP_Schedule_Manager_User_Organization();
+        
+        // Try to remove user from organization
+        $result = $user_organization->remove_user_from_organization($user_id, $organization_id);
+        
+        if (!$result) {
+            return new WP_Error('failed_to_remove', 'Failed to remove user from organization', array('status' => 500));
+        }
+        
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'User removed from organization successfully'
+        ));
+    }
+
+    /**
+     * Check if user has permission to remove user from organization
+     */
+    public function remove_user_from_organization_permissions_check($request) {
+        $user_id = $request['user_id'];
+        $organization_id = $request['organization_id'];
+        
+        // Admins can remove users from organizations
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        // Use permissions class to check if user can remove from organization
+        $permissions = new WP_Schedule_Manager_Permissions();
+        return $permissions->user_can_remove_from_organization($organization_id);
+    }
+
+    /**
+     * Update user's role in an organization
+     */
+    public function update_user_organization_role($request) {
+        $user_id = $request['user_id'];
+        $organization_id = $request['organization_id'];
+        $params = $request->get_params();
+        
+        if (!isset($params['role'])) {
+            return new WP_Error('missing_role', 'Role parameter is required', array('status' => 400));
+        }
+        
+        // Create instance of User Organization model
+        $user_organization = new WP_Schedule_Manager_User_Organization();
+        
+        // Update the role
+        $result = $user_organization->update_user_role($user_id, $organization_id, $params['role']);
+        
+        if (!$result) {
+            return new WP_Error('failed_to_update', 'Failed to update role', array('status' => 500));
+        }
+        
+        return rest_ensure_response(array(
+            'success' => true,
+            'message' => 'Role updated successfully'
+        ));
+    }
+
+    /**
+     * Check if user has permission to update role in organization
+     */
+    public function update_user_organization_role_permissions_check($request) {
+        $organization_id = $request['organization_id'];
+        
+        // Admins can update roles
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        // Use permissions class to check if user can update roles
+        $permissions = new WP_Schedule_Manager_Permissions();
+        return $permissions->user_can_update_roles_in_organization($organization_id);
     }
 }

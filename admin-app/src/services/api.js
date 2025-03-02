@@ -302,15 +302,15 @@ export const userApi = {
    * 
    * @param {number} userId - The user ID
    * @param {number} organizationId - The organization ID
-   * @param {string} role - The role (admin, manager, member)
+   * @param {string} role - The role (bas, schemaläggare, admin)
    * @returns {Promise} - The fetch promise
    */
-  addUserToOrganization: (userId, organizationId, role) => apiRequest(`/users-organizations`, {
+  addUserToOrganization: (userId, organizationId, role) => apiRequest('/users-organizations', {
     method: 'POST',
     body: JSON.stringify({
       user_id: userId,
       organization_id: organizationId,
-      role: role
+      role
     })
   }),
 
@@ -321,8 +321,21 @@ export const userApi = {
    * @param {number} organizationId - The organization ID
    * @returns {Promise} - The fetch promise
    */
-  removeUserFromOrganization: (userId, organizationId) => apiRequest(`/users-organizations/${userId}/${organizationId}`, {
+  removeUserFromOrganization: (userId, organizationId) => apiRequest(`/users/${userId}/organizations/${organizationId}`, {
     method: 'DELETE'
+  }),
+
+  /**
+   * Update user's role in an organization
+   * 
+   * @param {number} userId - The user ID
+   * @param {number} organizationId - The organization ID
+   * @param {string} role - The new role (bas, schemaläggare, admin)
+   * @returns {Promise} - The fetch promise
+   */
+  updateUserOrganizationRole: (userId, organizationId, role) => apiRequest(`/users/${userId}/organizations/${organizationId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role })
   }),
 
   /**
