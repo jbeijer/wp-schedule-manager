@@ -120,18 +120,13 @@ class WP_Schedule_Manager_API {
                 'callback'            => array( $this, 'get_users_organizations' ),
                 'permission_callback' => array( $this, 'get_users_organizations_permissions_check' ),
             ),
-            array(
-                'methods'             => WP_REST_Server::CREATABLE,
-                'callback'            => array( $this, 'create_user_organization' ),
-                'permission_callback' => array( $this, 'create_user_organization_permissions_check' ),
-            ),
         ));
 
         // Add new endpoint for specific user's organizations
         register_rest_route( $namespace, '/users/(?P<id>\d+)/organizations', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
-                'callback'            => array( $this, 'get_user_organizations' ),
+                'callback'            => array( $this, 'get_user_organizations_by_id' ),
                 'permission_callback' => array( $this, 'get_user_organizations_permissions_check' ),
             ),
         ));
@@ -987,42 +982,6 @@ class WP_Schedule_Manager_API {
     }
 
     /**
-     * Create a user-organization relationship
-     *
-     * @since    1.0.0
-     * @param    WP_REST_Request $request Full data about the request.
-     * @return   WP_REST_Response
-     */
-    public function create_user_organization( $request ) {
-        $user_organization = $this->prepare_user_organization_for_database( $request );
-        
-        $user_organization_model = new WP_Schedule_Manager_User_Organization();
-        $id = $user_organization_model->create( $user_organization );
-        
-        if ( is_wp_error( $id ) ) {
-            return $id;
-        }
-        
-        $user_organization = $user_organization_model->get( $id );
-        $response = rest_ensure_response( $user_organization );
-        $response->set_status( 201 );
-        
-        return $response;
-    }
-
-    /**
-     * Check if a given request has access to create user-organization relationships
-     *
-     * @since    1.0.0
-     * @param    WP_REST_Request $request Full data about the request.
-     * @return   bool
-     */
-    public function create_user_organization_permissions_check( $request ) {
-        // For testing purposes, allow all requests
-        return true;
-    }
-
-    /**
      * Get users
      *
      * @param WP_REST_Request $request Full data about the request.
@@ -1525,7 +1484,7 @@ class WP_Schedule_Manager_API {
     /**
      * Get organizations for a specific user
      */
-    public function get_user_organizations($request) {
+    public function get_user_organizations_by_id($request) {
         $user_id = $request['id'];
         
         // Create instance of User Organization model
