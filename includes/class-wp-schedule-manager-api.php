@@ -255,7 +255,9 @@ class WP_Schedule_Manager_API {
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_user_capabilities' ),
-                'permission_callback' => '__return_true', // All logged in users can check their capabilities
+                'permission_callback' => function () {
+                    return is_user_logged_in();
+                }
             ),
         ));
     }

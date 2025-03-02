@@ -20,10 +20,18 @@ const checkPermission = (permission, userCapabilities) => {
     return false;
   }
 
-  // Check if user has permission in any organization
-  return Object.values(userCapabilities.organizations).some(org => 
-    org.permissions && org.permissions[permission] === true
-  );
+  // Check if organizations is an array or an object
+  if (Array.isArray(userCapabilities.organizations)) {
+    // Handle array format
+    return userCapabilities.organizations.some(org => 
+      org.permissions && org.permissions[permission] === true
+    );
+  } else {
+    // Handle object format
+    return Object.values(userCapabilities.organizations).some(org => 
+      org.permissions && org.permissions[permission] === true
+    );
+  }
 };
 
 /**
@@ -401,11 +409,25 @@ export const userApi = {
    */
   getUserCapabilities: async () => {
     try {
-      const response = await fetch(`${API_URL}/capabilities`);
-      return response.json();
+      const response = await fetch(`${API_URL}/capabilities`, {
+        headers: {
+          'X-WP-Nonce': NONCE
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch user capabilities: ${response.status}`);
+      }
+      
+      return await response.json();
     } catch (error) {
       console.error('Error fetching user capabilities:', error);
-      throw error;
+      // Return a default object instead of throwing to prevent breaking the UI
+      return {
+        isAdmin: false,
+        role: 'base',
+        organizations: []
+      };
     }
   },
 

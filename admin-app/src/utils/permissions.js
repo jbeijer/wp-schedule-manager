@@ -8,36 +8,49 @@
  * @param {string} action - The action to check (e.g., 'viewSchedule', 'manageShift', 'manageResources')
  * @param {number|null} organizationId - The organization ID to check permissions for, or null for global permissions
  * @returns {boolean} - Whether the user can perform the action
+ * @throws {Error} - If invalid parameters are provided
  */
 export function canUserPerformAction(action, organizationId = null) {
-    const { userCapabilities } = window.wpScheduleManager || {};
-    
-    if (!userCapabilities) return false;
-    
+    if (typeof action !== 'string' || action.trim() === '') {
+        throw new Error('Action must be a non-empty string');
+    }
+
+    if (organizationId !== null && (typeof organizationId !== 'number' || isNaN(organizationId))) {
+        throw new Error('Organization ID must be a number or null');
+    }
+
+    const userCapabilities = window.wpScheduleManager?.userCapabilities || {};
+
     // Admin has all permissions
     if (userCapabilities.isAdmin || userCapabilities.role === 'admin') return true;
-    
+
     // Scheduler can manage schedules and shifts
-    if (userCapabilities.role === 'schemalaggare' && 
+    if (userCapabilities.role === 'schemaläggare' && 
         (action === 'viewSchedule' || action === 'manageShift')) {
         return true;
     }
-    
+
     // Check organization-specific permissions
     if (organizationId && userCapabilities.organizations) {
-        const orgCaps = userCapabilities.organizations.find(
-            org => org.id === parseInt(organizationId, 10)
+        // Handle both array and object formats of organizations
+        const orgs = Array.isArray(userCapabilities.organizations) 
+            ? userCapabilities.organizations 
+            : Object.values(userCapabilities.organizations);
+
+        const orgCaps = orgs.find(org => 
+            org && org.id === parseInt(organizationId, 10)
         );
-        if (orgCaps) {
-            return orgCaps[action] === true;
+
+        if (orgCaps && orgCaps[action] === true) {
+            return true;
         }
     }
-    
+
     // Base user can only view schedule and manage own shifts
     if (userCapabilities.role === 'bas' && action === 'viewSchedule') {
         return true;
     }
-    
+
     return false;
 }
 
@@ -46,25 +59,34 @@ export function canUserPerformAction(action, organizationId = null) {
  * 
  * @param {string} role - The role to check for ('admin', 'scheduler', 'base')
  * @returns {boolean} - Whether the user has the role in any organization
+ * @throws {Error} - If invalid parameters are provided
  */
 export function userHasRoleAnywhere(role) {
-    const { userCapabilities } = window.wpScheduleManager || {};
-    
-    if (!userCapabilities) return false;
-    
-    // Om användaren är WordPress-admin
+    if (typeof role !== 'string' || role.trim() === '') {
+        throw new Error('Role must be a non-empty string');
+    }
+
+    const userCapabilities = window.wpScheduleManager?.userCapabilities || {};
+
+    // If user is WordPress-admin
     if (userCapabilities.isAdmin) return true;
-    
-    // Kontrollera om användaren har rollen i någon organisation
+
+    // Check if user has the role in any organization
     if (userCapabilities.organizations) {
-        return userCapabilities.organizations.some(org => {
+        // Handle both array and object formats of organizations
+        const orgs = Array.isArray(userCapabilities.organizations) 
+            ? userCapabilities.organizations 
+            : Object.values(userCapabilities.organizations);
+
+        return orgs.some(org => {
+            if (!org) return false;
             if (role === 'admin') return org.role === 'admin';
             if (role === 'scheduler') return org.role === 'admin' || org.role === 'scheduler';
-            if (role === 'base') return true; // Alla användare har minst bas-roll
+            if (role === 'base') return true; // All users have at least base role
             return false;
         });
     }
-    
+
     return false;
 }
 
@@ -73,24 +95,33 @@ export function userHasRoleAnywhere(role) {
  * 
  * @param {number} organizationId - The organization ID
  * @returns {string|null} - The user's role in the organization, or null if not a member
+ * @throws {Error} - If invalid parameters are provided
  */
 export function getUserRoleInOrganization(organizationId) {
-    const { userCapabilities } = window.wpScheduleManager || {};
-    
-    if (!userCapabilities) return null;
-    
-    // Om användaren är WordPress-admin
+    if (typeof organizationId !== 'number' || isNaN(organizationId)) {
+        throw new Error('Organization ID must be a number');
+    }
+
+    const userCapabilities = window.wpScheduleManager?.userCapabilities || {};
+
+    // If user is WordPress-admin
     if (userCapabilities.isAdmin) return 'admin';
-    
-    // Hitta användarens roll i organisationen
+
+    // Find user's role in the organization
     if (userCapabilities.organizations) {
-        const org = userCapabilities.organizations.find(
-            org => org.id === parseInt(organizationId, 10)
+        // Handle both array and object formats of organizations
+        const orgs = Array.isArray(userCapabilities.organizations) 
+            ? userCapabilities.organizations 
+            : Object.values(userCapabilities.organizations);
+
+        const org = orgs.find(org => 
+            org && org.id === parseInt(organizationId, 10)
         );
+
         if (org) {
             return org.role;
         }
     }
-    
+
     return null;
 }
