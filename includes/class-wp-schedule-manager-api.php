@@ -33,6 +33,15 @@ if ( ! function_exists( 'register_rest_route' ) ) {
 class WP_Schedule_Manager_API {
 
     /**
+     * The namespace for the API routes.
+     *
+     * @since    1.0.0
+     * @access   private
+     * @var      string    $namespace    The namespace for the API routes.
+     */
+    private $namespace = 'wp-schedule-manager/v1';
+
+    /**
      * The ID of this plugin.
      *
      * @since    1.0.0
@@ -57,7 +66,7 @@ class WP_Schedule_Manager_API {
      * @param    string    $plugin_name       The name of this plugin.
      * @param    string    $version    The version of this plugin.
      */
-    public function __construct( $plugin_name, $version ) {
+    public function __construct( $plugin_name = '', $version = '' ) {
         $this->plugin_name = $plugin_name;
         $this->version = $version;
     }
@@ -68,7 +77,7 @@ class WP_Schedule_Manager_API {
      * @since    1.0.0
      */
     public function register_routes() {
-        // Directly register API endpoints instead of adding another action
+        // Register all API endpoints
         $this->register_api_endpoints();
     }
 
@@ -78,14 +87,11 @@ class WP_Schedule_Manager_API {
      * @since    1.0.0
      */
     public function register_api_endpoints() {
-        // API namespace
-        $namespace = 'wp-schedule-manager/v1';
-
         // Register organizations endpoints
         $this->register_organization_routes();
 
         // Register users-organizations endpoints
-        register_rest_route( $namespace, '/users-organizations', array(
+        register_rest_route( $this->namespace, '/users-organizations', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_users_organizations' ),
@@ -94,7 +100,7 @@ class WP_Schedule_Manager_API {
         ));
 
         // Add new endpoint for specific user's organizations
-        register_rest_route( $namespace, '/users/(?P<id>\d+)/organizations', array(
+        register_rest_route( $this->namespace, '/users/(?P<id>\d+)/organizations', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_user_organizations_by_id' ),
@@ -103,7 +109,7 @@ class WP_Schedule_Manager_API {
         ));
 
         // Add endpoint for managing specific user-organization relationship
-        register_rest_route( $namespace, '/users/(?P<user_id>\d+)/organizations/(?P<organization_id>\d+)', array(
+        register_rest_route( $this->namespace, '/users/(?P<user_id>\d+)/organizations/(?P<organization_id>\d+)', array(
             array(
                 'methods'             => WP_REST_Server::DELETABLE,
                 'callback'            => array( $this, 'remove_user_from_organization' ),
@@ -117,7 +123,7 @@ class WP_Schedule_Manager_API {
         ));
 
         // Register shifts endpoints
-        register_rest_route( $namespace, '/shifts', array(
+        register_rest_route( $this->namespace, '/shifts', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_shifts' ),
@@ -130,7 +136,7 @@ class WP_Schedule_Manager_API {
             ),
         ));
 
-        register_rest_route( $namespace, '/shifts/(?P<id>\d+)', array(
+        register_rest_route( $this->namespace, '/shifts/(?P<id>\d+)', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_shift' ),
@@ -149,7 +155,7 @@ class WP_Schedule_Manager_API {
         ));
 
         // Register users endpoints
-        register_rest_route( $namespace, '/users', array(
+        register_rest_route( $this->namespace, '/users', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_users' ),
@@ -170,7 +176,7 @@ class WP_Schedule_Manager_API {
             ),
         ));
 
-        register_rest_route( $namespace, '/users/(?P<id>\d+)', array(
+        register_rest_route( $this->namespace, '/users/(?P<id>\d+)', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_user' ),
@@ -196,7 +202,7 @@ class WP_Schedule_Manager_API {
             ),
         ));
 
-        register_rest_route( $namespace, '/users/(?P<id>\d+)/permissions', array(
+        register_rest_route( $this->namespace, '/users/(?P<id>\d+)/permissions', array(
             array(
                 'methods'             => WP_REST_Server::READABLE,
                 'callback'            => array( $this, 'get_user_permissions' ),
@@ -205,7 +211,7 @@ class WP_Schedule_Manager_API {
         ));
 
         // Add role update endpoint
-        register_rest_route($namespace, '/users/(?P<id>\d+)/role', array(
+        register_rest_route($this->namespace, '/users/(?P<id>\d+)/role', array(
             array(
                 'methods' => 'PUT',
                 'callback' => array($this, 'update_user_role'),
@@ -1626,45 +1632,27 @@ class WP_Schedule_Manager_API {
      * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
      */
     public function get_user_capabilities($request) {
-        $current_user = wp_get_current_user();
-        if (!$current_user || !$current_user->ID) {
-            return new WP_Error('not_logged_in', 'User must be logged in', array('status' => 401));
-        }
-
-        // Get user's role in each organization
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'schedule_manager_user_organizations';
-        $organizations = $wpdb->get_results($wpdb->prepare(
-            "SELECT organization_id, role FROM $table_name WHERE user_id = %d",
-            $current_user->ID
-        ));
-
-        $capabilities = array(
-            'user_id' => $current_user->ID,
-            'organizations' => array(),
-            'global_role' => $current_user->roles[0] ?? 'subscriber'
-        );
-
-        foreach ($organizations as $org) {
-            $capabilities['organizations'][$org->organization_id] = array(
-                'role' => $org->role,
-                'permissions' => array(
-                    'view' => true,
-                    'create' => in_array($org->role, array('schemaläggare', 'admin')),
-                    'edit' => in_array($org->role, array('schemaläggare', 'admin')),
-                    'delete' => $org->role === 'admin',
-                    'manage_users' => $org->role === 'admin'
-                )
-            );
-        }
-
+        // Include necessary files
+        require_once plugin_dir_path(dirname(__FILE__)) . 'includes/class-wp-schedule-manager-permissions.php';
+        
+        // Create permissions object
+        $permissions = new WP_Schedule_Manager_Permissions();
+        
+        // Get current user ID
+        $user_id = get_current_user_id();
+        
+        // Get user capabilities
+        $capabilities = $permissions->get_user_capabilities($user_id);
+        
         return rest_ensure_response($capabilities);
     }
 
     /**
      * Register organization routes
+     *
+     * @since    1.0.0
      */
-    public function register_organization_routes() {
+    private function register_organization_routes() {
         register_rest_route(
             $this->namespace,
             '/organizations',
@@ -1678,10 +1666,10 @@ class WP_Schedule_Manager_API {
                     'methods'             => WP_REST_Server::CREATABLE,
                     'callback'            => array($this, 'create_organization'),
                     'permission_callback' => array($this, 'create_organization_permissions_check'),
-                ),
+                )
             )
         );
-
+        
         register_rest_route(
             $this->namespace,
             '/organizations/(?P<id>\d+)',
@@ -1702,43 +1690,12 @@ class WP_Schedule_Manager_API {
                     'methods'             => WP_REST_Server::EDITABLE,
                     'callback'            => array($this, 'update_organization'),
                     'permission_callback' => array($this, 'update_organization_permissions_check'),
-                    'args'                => array(
-                        'id' => array(
-                            'validate_callback' => function($param) {
-                                return is_numeric($param);
-                            }
-                        ),
-                    ),
                 ),
                 array(
                     'methods'             => WP_REST_Server::DELETABLE,
                     'callback'            => array($this, 'delete_organization'),
                     'permission_callback' => array($this, 'delete_organization_permissions_check'),
-                    'args'                => array(
-                        'id' => array(
-                            'validate_callback' => function($param) {
-                                return is_numeric($param);
-                            }
-                        ),
-                    ),
-                ),
-            )
-        );
-    }
-
-    /**
-     * Register capabilities endpoint
-     */
-    public function register_capabilities_endpoint() {
-        register_rest_route(
-            $this->namespace,
-            '/capabilities',
-            array(
-                'methods'             => WP_REST_Server::READABLE,
-                'callback'            => array($this, 'get_user_capabilities'),
-                'permission_callback' => function() {
-                    return is_user_logged_in();
-                },
+                )
             )
         );
     }

@@ -470,55 +470,32 @@ class WP_Schedule_Manager_Permissions {
     }
 
     /**
-     * Get all user capabilities for the React app.
+     * Get all capabilities for a user.
      *
      * @since    1.0.0
-     * @param    int       $user_id    The user ID.
-     * @return   array                 The user capabilities.
+     * @param    int       $user_id     The user ID.
+     * @return   array                  Array of user capabilities.
      */
     public function get_user_capabilities($user_id) {
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-role.php';
-        $is_wp_admin = $this->is_wordpress_admin($user_id);
-
         $capabilities = array(
-            'isAdmin' => $is_wp_admin,
-            'role' => $is_wp_admin ? 'admin' : WP_Schedule_Manager_Role::get_user_role($user_id),
-            'viewSchedule' => $is_wp_admin || user_can($user_id, 'view_schedule'),
-            'manageOwnShifts' => $is_wp_admin || user_can($user_id, 'manage_own_shifts'),
-            'manageAllShifts' => $is_wp_admin || user_can($user_id, 'manage_all_shifts'),
-            'manageResources' => $is_wp_admin || user_can($user_id, 'manage_resources'),
+            'is_wordpress_admin' => $this->is_wordpress_admin($user_id),
+            'highest_role' => $this->get_highest_role($user_id),
+            'can_view_admin' => $this->can_view_admin($user_id),
             'organizations' => array()
         );
-        
-        // For WordPress admins, if they're not part of any organizations yet,
-        // we'll still need to add organizations they have access to
-        if ($is_wp_admin) {
-            // Get all organizations
-            $all_orgs = $this->organization->all();
-            foreach ($all_orgs as $org) {
-                $capabilities['organizations'][] = array(
-                    'id' => $org->id,
-                    'name' => $org->name,
-                    'role' => 'admin',
-                    'viewSchedule' => true,
-                    'bookShift' => true,
-                    'manageShift' => true,
-                    'manageResources' => true
-                );
-            }
-        } else {
-            $user_orgs = $this->user_organization->get_user_organizations($user_id);
-            foreach ($user_orgs as $user_org) {
-                $capabilities['organizations'][] = array(
-                    'id' => $user_org->organization_id,
-                    'name' => $user_org->organization_name,
-                    'role' => $user_org->role,
-                    'viewSchedule' => true,
-                    'bookShift' => true,
-                    'manageShift' => $user_org->role === 'scheduler' || $user_org->role === 'admin',
-                    'manageResources' => $user_org->role === 'admin'
-                );
-            }
+
+        // Get user's organizations and their specific capabilities
+        $user_orgs = $this->user_organization->get_user_organizations($user_id);
+        foreach ($user_orgs as $user_org) {
+            $org_capabilities = array(
+                'id' => $user_org->organization_id,
+                'role' => $user_org->role,
+                'can_view' => $this->can_view_organization($user_id, $user_org->organization_id),
+                'can_edit' => $this->can_edit_organization($user_id, $user_org->organization_id),
+                'can_manage_users' => $this->can_manage_users($user_id, $user_org->organization_id),
+                'can_create_shifts' => $this->can_create_shifts($user_id, $user_org->organization_id)
+            );
+            $capabilities['organizations'][] = $org_capabilities;
         }
 
         return $capabilities;
