@@ -82,36 +82,7 @@ class WP_Schedule_Manager_API {
         $namespace = 'wp-schedule-manager/v1';
 
         // Register organizations endpoints
-        register_rest_route( $namespace, '/organizations', array(
-            array(
-                'methods'             => WP_REST_Server::READABLE,
-                'callback'            => array( $this, 'get_organizations' ),
-                'permission_callback' => array( $this, 'get_organizations_permissions_check' ),
-            ),
-            array(
-                'methods'             => WP_REST_Server::CREATABLE,
-                'callback'            => array( $this, 'create_organization' ),
-                'permission_callback' => array( $this, 'create_organization_permissions_check' ),
-            ),
-        ));
-
-        register_rest_route( $namespace, '/organizations/(?P<id>\d+)', array(
-            array(
-                'methods'             => WP_REST_Server::READABLE,
-                'callback'            => array( $this, 'get_organization' ),
-                'permission_callback' => array( $this, 'get_organization_permissions_check' ),
-            ),
-            array(
-                'methods'             => WP_REST_Server::EDITABLE,
-                'callback'            => array( $this, 'update_organization' ),
-                'permission_callback' => array( $this, 'update_organization_permissions_check' ),
-            ),
-            array(
-                'methods'             => WP_REST_Server::DELETABLE,
-                'callback'            => array( $this, 'delete_organization' ),
-                'permission_callback' => array( $this, 'delete_organization_permissions_check' ),
-            ),
-        ));
+        $this->register_organization_routes();
 
         // Register users-organizations endpoints
         register_rest_route( $namespace, '/users-organizations', array(
@@ -251,15 +222,7 @@ class WP_Schedule_Manager_API {
         ));
 
         // Register capabilities endpoint
-        register_rest_route( $namespace, '/capabilities', array(
-            array(
-                'methods'             => WP_REST_Server::READABLE,
-                'callback'            => array( $this, 'get_user_capabilities' ),
-                'permission_callback' => function () {
-                    return is_user_logged_in();
-                }
-            ),
-        ));
+        $this->register_capabilities_endpoint();
     }
 
     /**
@@ -1704,5 +1667,108 @@ class WP_Schedule_Manager_API {
         }
 
         return rest_ensure_response($capabilities);
+    }
+
+    /**
+     * Register organization routes
+     */
+    public function register_organization_routes() {
+        register_rest_route(
+            $this->namespace,
+            '/organizations',
+            array(
+                array(
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => array($this, 'get_organizations'),
+                    'permission_callback' => array($this, 'get_organizations_permissions_check'),
+                ),
+                array(
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => array($this, 'create_organization'),
+                    'permission_callback' => array($this, 'create_organization_permissions_check'),
+                ),
+            )
+        );
+
+        register_rest_route(
+            $this->namespace,
+            '/organizations/(?P<id>\d+)',
+            array(
+                array(
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => array($this, 'get_organization'),
+                    'permission_callback' => array($this, 'get_organization_permissions_check'),
+                    'args'                => array(
+                        'id' => array(
+                            'validate_callback' => function($param) {
+                                return is_numeric($param);
+                            }
+                        ),
+                    ),
+                ),
+                array(
+                    'methods'             => WP_REST_Server::EDITABLE,
+                    'callback'            => array($this, 'update_organization'),
+                    'permission_callback' => array($this, 'update_organization_permissions_check'),
+                    'args'                => array(
+                        'id' => array(
+                            'validate_callback' => function($param) {
+                                return is_numeric($param);
+                            }
+                        ),
+                    ),
+                ),
+                array(
+                    'methods'             => WP_REST_Server::DELETABLE,
+                    'callback'            => array($this, 'delete_organization'),
+                    'permission_callback' => array($this, 'delete_organization_permissions_check'),
+                    'args'                => array(
+                        'id' => array(
+                            'validate_callback' => function($param) {
+                                return is_numeric($param);
+                            }
+                        ),
+                    ),
+                ),
+            )
+        );
+    }
+
+    /**
+     * Get organizations permissions check
+     */
+    public function get_organizations_permissions_check($request) {
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        $permissions_class = new WP_Schedule_Manager_Permissions();
+        
+        if ($permissions_class->user_can_view_organizations()) {
+            return true;
+        }
+        
+        return new WP_Error(
+            'rest_forbidden',
+            __('Sorry, you are not allowed to view organizations.', 'wp-schedule-manager'),
+            array('status' => rest_authorization_required_code())
+        );
+    }
+
+    /**
+     * Register capabilities endpoint
+     */
+    public function register_capabilities_endpoint() {
+        register_rest_route(
+            $this->namespace,
+            '/capabilities',
+            array(
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => array($this, 'get_user_capabilities'),
+                'permission_callback' => function() {
+                    return is_user_logged_in();
+                },
+            )
+        );
     }
 }

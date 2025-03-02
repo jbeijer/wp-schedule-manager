@@ -16,6 +16,11 @@ const verifyRole = (requiredRole, currentRole) => {
 
 // Permission check helper
 const checkPermission = (permission, userCapabilities) => {
+  // First, check if user is WordPress admin (has isAdmin flag)
+  if (userCapabilities && userCapabilities.isAdmin) {
+    return true;
+  }
+
   if (!userCapabilities || !userCapabilities.organizations) {
     return false;
   }
@@ -85,27 +90,35 @@ export const organizationApi = {
    * @returns {Promise} - The fetch promise
    */
   getAll: async (options = {}) => {
-    const capabilities = await userApi.getUserCapabilities();
-    if (!checkPermission('read_organizations', capabilities)) {
-      throw new Error('Insufficient permissions to view organizations');
+    try {
+      const capabilities = await userApi.getUserCapabilities();
+      
+      // Skip permission check for WordPress admins
+      if (!capabilities.isAdmin && !checkPermission('read_organizations', capabilities)) {
+        throw new Error('Insufficient permissions to view organizations');
+      }
+      
+      let endpoint = '/organizations';
+      const params = new URLSearchParams();
+      
+      if (options.hierarchical) {
+        params.append('hierarchical', 'true');
+      }
+      
+      if (options.parent_id !== undefined) {
+        params.append('parent_id', options.parent_id);
+      }
+      
+      const queryString = params.toString();
+      if (queryString) {
+        endpoint += `?${queryString}`;
+      }
+      
+      return apiRequest(endpoint);
+    } catch (err) {
+      console.error('Error in getAll organizations:', err);
+      throw err;
     }
-    let endpoint = '/organizations';
-    const params = new URLSearchParams();
-    
-    if (options.hierarchical) {
-      params.append('hierarchical', 'true');
-    }
-    
-    if (options.parent_id !== undefined) {
-      params.append('parent_id', options.parent_id);
-    }
-    
-    const queryString = params.toString();
-    if (queryString) {
-      endpoint += `?${queryString}`;
-    }
-    
-    return apiRequest(endpoint);
   },
 
   /**
