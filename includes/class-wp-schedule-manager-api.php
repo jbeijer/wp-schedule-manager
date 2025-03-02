@@ -297,27 +297,6 @@ class WP_Schedule_Manager_API {
     }
 
     /**
-     * Check if a given request has access to get organizations
-     *
-     * @since    1.0.0
-     * @param    WP_REST_Request $request Full data about the request.
-     * @return   bool
-     */
-    public function get_organizations_permissions_check( $request ) {
-        $current_user_id = get_current_user_id();
-        
-        // Användare måste vara inloggad
-        if (!$current_user_id) {
-            return false;
-        }
-        
-        // Kontrollera om användaren har behörighet att se organisationer
-        require_once WP_SCHEDULE_MANAGER_PLUGIN_DIR . 'includes/class-wp-schedule-manager-permissions.php';
-        $permissions = new WP_Schedule_Manager_Permissions();
-        return $permissions->user_can_view_organizations();
-    }
-
-    /**
      * Get a single organization
      *
      * @since    1.0.0
@@ -363,15 +342,28 @@ class WP_Schedule_Manager_API {
     }
 
     /**
-     * Check if a given request has access to get a specific organization
+     * Check if a given request has access to get organizations
      *
      * @since    1.0.0
      * @param    WP_REST_Request $request Full data about the request.
      * @return   bool
      */
-    public function get_organization_permissions_check( $request ) {
-        // For testing purposes, allow all requests
-        return true;
+    public function get_organizations_permissions_check( $request ) {
+        if (current_user_can('administrator')) {
+            return true;
+        }
+        
+        $permissions_class = new WP_Schedule_Manager_Permissions();
+        
+        if ($permissions_class->user_can_view_organizations()) {
+            return true;
+        }
+        
+        return new WP_Error(
+            'rest_forbidden',
+            __('Sorry, you are not allowed to view organizations.', 'wp-schedule-manager'),
+            array('status' => rest_authorization_required_code())
+        );
     }
 
     /**
@@ -1731,27 +1723,6 @@ class WP_Schedule_Manager_API {
                     ),
                 ),
             )
-        );
-    }
-
-    /**
-     * Get organizations permissions check
-     */
-    public function get_organizations_permissions_check($request) {
-        if (current_user_can('administrator')) {
-            return true;
-        }
-        
-        $permissions_class = new WP_Schedule_Manager_Permissions();
-        
-        if ($permissions_class->user_can_view_organizations()) {
-            return true;
-        }
-        
-        return new WP_Error(
-            'rest_forbidden',
-            __('Sorry, you are not allowed to view organizations.', 'wp-schedule-manager'),
-            array('status' => rest_authorization_required_code())
         );
     }
 
